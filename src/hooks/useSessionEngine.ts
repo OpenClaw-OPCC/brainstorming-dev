@@ -344,7 +344,15 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
         inFlightRef.current = false;
       }
     },
-    [enabled, handleQuestions, historyPayload, session.id, session.language, session.template],
+    [
+      enabled,
+      handleQuestions,
+      historyPayload,
+      session.id,
+      session.language,
+      session.template,
+      session.turnstileToken,
+    ],
   );
 
   useEffect(() => {

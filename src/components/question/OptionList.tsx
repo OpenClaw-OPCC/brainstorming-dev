@@ -20,6 +20,7 @@ export function OptionList({ question, answer, onChange }: OptionListProps) {
         className="min-h-[100px] w-full resize-none rounded-[var(--corner-radius-small)] border border-[var(--app-border-color)] bg-[var(--app-tertiary-background)] p-2 text-sm"
         value={(answer?.value as string) ?? ""}
         onChange={(event) => onChange({ questionId: question.id, value: event.target.value })}
+        maxLength={400}
       />
     );
   }

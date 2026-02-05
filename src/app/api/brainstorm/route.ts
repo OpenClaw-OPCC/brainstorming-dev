@@ -64,15 +64,9 @@ function buildUserMessage(input: string | undefined, history: BrainstormRequest[
 }
 
 const MAX_INPUT_LENGTH = 2000;
-const MAX_CUSTOM_TEXT_LENGTH = 400;
+const MAX_ANSWER_LENGTH = 400;
 
-async function verifyTurnstileToken(token: string): Promise<boolean> {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
-  if (!secretKey) {
-    console.warn("[brainstorm] TURNSTILE_SECRET_KEY not configured, skipping verification");
-    return true;
-  }
-
+async function verifyTurnstileToken(token: string, secretKey: string): Promise<boolean> {
   try {
     const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",
@@ -83,7 +77,15 @@ async function verifyTurnstileToken(token: string): Promise<boolean> {
       }),
     });
 
-    const result = await response.json() as { success: boolean };
+    if (!response.ok) {
+      console.error("[brainstorm] Turnstile verification HTTP error", { status: response.status });
+      return false;
+    }
+
+    const result = (await response.json()) as { success: boolean; "error-codes"?: string[] };
+    if (result.success !== true) {
+      console.warn("[brainstorm] Turnstile verification rejected", { errorCodes: result["error-codes"] });
+    }
     return result.success === true;
   } catch (error) {
     console.error("[brainstorm] Turnstile verification failed", error);
@@ -97,6 +99,18 @@ export async function POST(request: Request) {
   // Verify Turnstile token on start action (if enabled)
   const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
   if (isTurnstileEnabled && body.action === "start") {
+    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+    if (!secretKey) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("[brainstorm] Turnstile is enabled but TURNSTILE_SECRET_KEY is missing");
+        return new Response(
+          JSON.stringify({ error: "Turnstile is enabled but not configured" }),
+          { status: 500 },
+        );
+      }
+      console.warn("[brainstorm] TURNSTILE_SECRET_KEY not configured, skipping verification in development");
+    }
+
     if (!body.turnstileToken) {
       return new Response(
         JSON.stringify({ error: "Turnstile verification required" }),
@@ -104,12 +118,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const isValid = await verifyTurnstileToken(body.turnstileToken);
-    if (!isValid) {
-      return new Response(
-        JSON.stringify({ error: "Turnstile verification failed" }),
-        { status: 403 }
-      );
+    if (secretKey) {
+      const isValid = await verifyTurnstileToken(body.turnstileToken, secretKey);
+      if (!isValid) {
+        return new Response(
+          JSON.stringify({ error: "Turnstile verification failed" }),
+          { status: 403 }
+        );
+      }
     }
   }
 
@@ -121,11 +137,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate customText in history answers
+  // Validate answer length in history
   for (const item of body.history) {
-    if (typeof item.answer === "string" && item.answer.length > MAX_CUSTOM_TEXT_LENGTH) {
+    if (typeof item.answer === "string" && item.answer.length > MAX_ANSWER_LENGTH) {
       return new Response(
-        JSON.stringify({ error: `Custom text exceeds maximum length of ${MAX_CUSTOM_TEXT_LENGTH} characters` }),
+        JSON.stringify({ error: `Answer exceeds maximum length of ${MAX_ANSWER_LENGTH} characters` }),
         { status: 400 }
       );
     }

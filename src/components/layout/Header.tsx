@@ -62,29 +62,69 @@ export function Header() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-[var(--app-header-muted)]">
-          <div className="hidden items-center gap-2 md:flex">
-            <span className="text-[11px] uppercase tracking-[0.2em]">{t("common.language")}</span>
-            <div className="flex items-center rounded-full border border-[var(--app-header-border)] p-0.5">
-              <button
-                className={`rounded-full px-2 py-1 text-[11px] ${language === "en" ? "bg-[var(--app-header-pill)] text-[var(--app-header-foreground)]" : ""}`}
-                onClick={() => setLanguage("en")}
-              >
-                EN
-              </button>
-              <button
-                className={`rounded-full px-2 py-1 text-[11px] ${language === "zh" ? "bg-[var(--app-header-pill)] text-[var(--app-header-foreground)]" : ""}`}
-                onClick={() => setLanguage("zh")}
-              >
-                中文
-              </button>
-            </div>
+        <div className="flex items-center gap-2 text-xs text-[var(--app-header-muted)]">
+          <div className="relative">
+            <label htmlFor="ui-language" className="sr-only">
+              {t("common.language")}
+            </label>
+            <select
+              id="ui-language"
+              className="h-8 appearance-none rounded-full border border-[var(--app-header-border)] bg-[var(--app-header-background)] px-3 pr-8 text-[11px] uppercase tracking-[0.2em] text-[var(--app-header-foreground)] outline-none focus:border-[var(--app-claude-orange)]"
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as typeof language)}
+            >
+              <option value="en">EN</option>
+              <option value="zh">中文</option>
+            </select>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--app-header-muted)]"
+            >
+              <path
+                d="M7 10l5 5 5-5"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
+
           <button
-            className="rounded-full border border-[var(--app-header-border)] px-3 py-1 text-[11px] uppercase tracking-[0.2em]"
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--app-header-border)] bg-[var(--app-header-background)] text-[var(--app-header-foreground)] outline-none transition-colors hover:bg-[var(--app-header-pill)] focus-visible:ring-2 focus-visible:ring-[var(--app-claude-orange)]/40"
             onClick={toggle}
+            aria-label={theme === "dark" ? t("common.light") : t("common.dark")}
+            title={theme === "dark" ? t("common.light") : t("common.dark")}
           >
-            {theme === "dark" ? t("common.dark") : t("common.light")}
+            {theme === "dark" ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                />
+                <path
+                  d="M12 2v2.5M12 19.5V22M4.22 4.22l1.77 1.77M18.01 18.01l1.77 1.77M2 12h2.5M19.5 12H22M4.22 19.78l1.77-1.77M18.01 5.99l1.77-1.77"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M21 14.5A8.5 8.5 0 0 1 9.5 3a7 7 0 1 0 11.5 11.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>

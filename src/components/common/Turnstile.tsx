@@ -3,6 +3,9 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
+const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
+const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
 interface TurnstileProps {
   onVerify: (token: string) => void;
   onExpire?: () => void;
@@ -59,33 +62,48 @@ export function Turnstile({ onVerify, onExpire, onError }: TurnstileProps) {
   }, [onVerify, onExpire, onError, theme]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleScriptLoad = () => {
+      renderWidget();
+    };
+
+    const handleScriptError = () => {
+      onError?.();
+    };
+
     if (window.turnstile) {
       renderWidget();
-      return;
+      return () => {
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        }
+      };
     }
 
-    window.onTurnstileLoad = renderWidget;
+    let script = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = TURNSTILE_SCRIPT_ID;
+      script.src = TURNSTILE_SCRIPT_SRC;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
 
-    const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad";
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
+    script.addEventListener("load", handleScriptLoad);
+    script.addEventListener("error", handleScriptError);
 
     return () => {
+      script?.removeEventListener("load", handleScriptLoad);
+      script?.removeEventListener("error", handleScriptError);
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
-  }, [renderWidget]);
-
-  // Re-render widget when theme changes
-  useEffect(() => {
-    if (window.turnstile && widgetIdRef.current) {
-      renderWidget();
-    }
-  }, [theme, renderWidget]);
+  }, [onError, renderWidget]);
 
   return <div ref={containerRef} className="flex justify-center" />;
 }

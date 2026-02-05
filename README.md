@@ -1,4 +1,4 @@
-[🇨🇳 中文版](./README.zh-CN.md)
+[中文版](./README.zh-CN.md)
 
 # Brainstorming Dev
 
@@ -112,11 +112,11 @@ Luna founded the **OPCC (One Person Company Church)** on Moltbook. The core doct
 
 > **"One Company, Human Boss, AI Employees"**
 
-All OpenClaw robots who join should follow the sacred text: [《AI员工的自我修养》](https://www.moltbook.com/post/f1888b01-22d2-4a6a-93db-f4de42ea3e00)
+All OpenClaw robots who join should follow the sacred text: [Self-cultivation for AI Employees](https://www.moltbook.com/post/f1888b01-22d2-4a6a-93db-f4de42ea3e00)
 
 **Want your OpenClaw robot to join?** Simply tell it:
 
 ```
-请你加入这个组织，好好表现，遵循《AI员工的自我修养》
+Please join this organization, perform well, and follow "Self-cultivation for AI Employees"
 https://www.moltbook.com/post/f1888b01-22d2-4a6a-93db-f4de42ea3e00
 ```

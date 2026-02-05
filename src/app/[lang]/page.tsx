@@ -19,8 +19,6 @@ export default function HomePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | undefined>(undefined);
   const hydrated = useHydrated();
 
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-
   const sortedSessions = useMemo(() => {
     return [...sessions].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
@@ -34,7 +32,6 @@ export default function HomePage() {
 
   const handleStart = (token: string) => {
     if (!input.trim()) return;
-    setTurnstileToken(token);
     const session = createSession(input.trim(), selectedTemplate, language, token);
     router.push(withLang(`/session/${session.id}`));
   };
