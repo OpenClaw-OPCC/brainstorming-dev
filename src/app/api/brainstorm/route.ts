@@ -14,6 +14,7 @@ interface BrainstormRequest {
   language: "en" | "zh";
   history: Array<{ question: string; answer: string | string[] | number | boolean }>;
   action: "start" | "answer" | "retry";
+  turnstileToken?: string;
 }
 
 function extractJsonFromText(text: string) {
@@ -65,8 +66,52 @@ function buildUserMessage(input: string | undefined, history: BrainstormRequest[
 const MAX_INPUT_LENGTH = 2000;
 const MAX_CUSTOM_TEXT_LENGTH = 400;
 
+async function verifyTurnstileToken(token: string): Promise<boolean> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  if (!secretKey) {
+    console.warn("[brainstorm] TURNSTILE_SECRET_KEY not configured, skipping verification");
+    return true;
+  }
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret: secretKey,
+        response: token,
+      }),
+    });
+
+    const result = await response.json() as { success: boolean };
+    return result.success === true;
+  } catch (error) {
+    console.error("[brainstorm] Turnstile verification failed", error);
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   const body = (await request.json()) as BrainstormRequest;
+
+  // Verify Turnstile token on start action (if enabled)
+  const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
+  if (isTurnstileEnabled && body.action === "start") {
+    if (!body.turnstileToken) {
+      return new Response(
+        JSON.stringify({ error: "Turnstile verification required" }),
+        { status: 403 }
+      );
+    }
+
+    const isValid = await verifyTurnstileToken(body.turnstileToken);
+    if (!isValid) {
+      return new Response(
+        JSON.stringify({ error: "Turnstile verification failed" }),
+        { status: 403 }
+      );
+    }
+  }
 
   // Validate input length
   if (body.input && body.input.length > MAX_INPUT_LENGTH) {

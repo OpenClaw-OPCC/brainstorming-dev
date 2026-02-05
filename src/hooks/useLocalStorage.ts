@@ -38,8 +38,8 @@ export function useLocalStorage() {
   );
 
   const createSession = useCallback(
-    (input: string, template: TemplateType | undefined, language: "en" | "zh") => {
-      const session = createSessionRecord(input, template, language);
+    (input: string, template: TemplateType | undefined, language: "en" | "zh", turnstileToken?: string) => {
+      const session = createSessionRecord(input, template, language, turnstileToken);
       updateState((prev) => upsertSession(prev, session));
       return session;
     },

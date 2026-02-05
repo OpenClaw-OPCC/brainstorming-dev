@@ -70,7 +70,7 @@ export function saveState(state: AppState): AppState {
   return next;
 }
 
-export function createSession(input: string, template: TemplateType | undefined, language: "en" | "zh"): Session {
+export function createSession(input: string, template: TemplateType | undefined, language: "en" | "zh", turnstileToken?: string): Session {
   const now = new Date().toISOString();
   const trimmed = input.trim();
   const fallbackTitle = trimmed.length > 32 ? `${trimmed.slice(0, 32)}…` : trimmed;
@@ -85,6 +85,7 @@ export function createSession(input: string, template: TemplateType | undefined,
     updatedAt: now,
     questionGroups: [],
     answers: [],
+    turnstileToken,
   };
 }
 

@@ -279,6 +279,7 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
             language: session.language,
             history: historyOverride ?? historyPayload,
             action,
+            turnstileToken: session.turnstileToken,
           }),
         });
 

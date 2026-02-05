@@ -16,4 +16,5 @@ export interface Session {
   answers: Answer[];
   summary?: Summary;
   summaryEdited?: string;
+  turnstileToken?: string;
 }
