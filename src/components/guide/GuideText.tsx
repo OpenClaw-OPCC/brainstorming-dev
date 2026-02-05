@@ -9,7 +9,14 @@ interface GuideTextProps {
 
 export function GuideText({ text, isLoading }: GuideTextProps) {
   const { t } = useI18n();
+
+  // Hide completely when no text and not loading
+  if (!text && !isLoading) {
+    return null;
+  }
+
   const showSkeleton = isLoading && !text;
+
   return (
     <div className="rounded-[var(--corner-radius-medium)] border border-[var(--app-border-color)] bg-[var(--app-secondary-background)] p-4">
       <div className="text-xs uppercase tracking-[0.2em] text-[var(--app-secondary-foreground)]">
@@ -28,7 +35,7 @@ export function GuideText({ text, isLoading }: GuideTextProps) {
           </div>
         </div>
       ) : (
-        <p className="mt-2 min-h-[60px] text-sm text-[var(--app-primary-foreground)]">
+        <p className="mt-2 text-sm text-[var(--app-primary-foreground)]">
           {text}
           {isLoading && text ? <span className="opacity-60"> ▍</span> : null}
         </p>

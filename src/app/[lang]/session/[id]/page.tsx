@@ -135,6 +135,26 @@ export default function SessionPage() {
           backLabel={t("session.back")}
           isLoading={isLoading}
         />
+      ) : isLoading ? (
+        <div className="flex w-full flex-col gap-4 rounded-[var(--corner-radius-large)] border border-[var(--app-border-color)] bg-[var(--app-secondary-background)] p-6">
+          <div className="flex gap-4 border-b border-[var(--app-border-color)] pb-4">
+            <div className="h-4 w-24 rounded bg-[var(--app-tertiary-background)] animate-pulse" />
+            <div className="h-4 w-24 rounded bg-[var(--app-tertiary-background)] animate-pulse opacity-50" />
+            <div className="h-4 w-24 rounded bg-[var(--app-tertiary-background)] animate-pulse opacity-50" />
+          </div>
+          <div className="space-y-4">
+            <div className="h-5 w-3/4 rounded bg-[var(--app-tertiary-background)] animate-pulse" />
+            <div className="space-y-3">
+              <div className="h-12 w-full rounded-lg bg-[var(--app-tertiary-background)] animate-pulse" />
+              <div className="h-12 w-full rounded-lg bg-[var(--app-tertiary-background)] animate-pulse" />
+              <div className="h-12 w-full rounded-lg bg-[var(--app-tertiary-background)] animate-pulse" />
+            </div>
+          </div>
+          <div className="flex justify-between pt-4">
+            <div className="h-9 w-16 rounded bg-[var(--app-tertiary-background)] animate-pulse" />
+            <div className="h-9 w-24 rounded bg-[var(--app-tertiary-background)] animate-pulse" />
+          </div>
+        </div>
       ) : null}
 
       {isComplete && !currentGroup ? (

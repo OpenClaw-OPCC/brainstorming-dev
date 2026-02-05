@@ -438,7 +438,9 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
       return true;
     }
 
-    // Keep current group visible while loading next questions
+    // Clear current group to show skeleton while loading next questions
+    setCurrentGroup(null);
+    setCurrentAnswers([]);
     const historyOverride = buildHistoryPayload({ ...updated, answers: nextAnswers }, nextAnswers);
     await runRequest("answer", undefined, historyOverride);
     return true;
