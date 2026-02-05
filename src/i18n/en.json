@@ -82,6 +82,14 @@
     "no_questions": "No questions returned",
     "parse_failed": "Failed to parse AI output",
     "stream_failed": "Streaming error",
-    "repeat_group": "Same question group returned. Retrying..."
+    "repeat_group": "Same question group returned. Retrying...",
+    "api_limit_title": "API Limit Reached",
+    "api_limit_description": "The public API quota is limited and may be exhausted. You can clone the project and use your own API key.",
+    "api_limit_steps": "Steps to run locally:",
+    "api_limit_clone": "Clone the GitHub repository",
+    "api_limit_env": "Add your ANTHROPIC_API_KEY to .env",
+    "api_limit_run": "Run pnpm dev to start local server",
+    "retry": "Retry",
+    "close": "Close"
   }
 }

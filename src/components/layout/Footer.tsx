@@ -13,14 +13,24 @@ export function Footer() {
           <Link href={withLang("/")} className="text-lg font-semibold tracking-[0.08em]">
             {t("header.brand")}
           </Link>
-          <a
-            href="https://x.com/bourneliu66"
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs uppercase tracking-[0.2em] text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
-          >
-            {t("footer.x")}
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://github.com/OpenClaw-OPCC/brainstorming-dev"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs uppercase tracking-[0.2em] text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+            >
+              GitHub
+            </a>
+            <a
+              href="https://x.com/bourneliu66"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs uppercase tracking-[0.2em] text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+            >
+              {t("footer.x")}
+            </a>
+          </div>
         </div>
         <div className="text-[11px] text-[var(--app-header-muted)]">
           {t("footer.by")}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { GuideText } from "@/components/guide/GuideText";
 import { QuestionCard } from "@/components/question/QuestionCard";
+import { ApiErrorModal } from "@/components/common/ApiErrorModal";
 import { useI18n } from "@/hooks/useI18n";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSessionEngine } from "@/hooks/useSessionEngine";
@@ -51,7 +52,14 @@ export default function SessionPage() {
     isLoading,
     error,
     isComplete,
+    showRetry,
+    retry,
   } = useSessionEngine({ session: effectiveSession, onSessionUpdate: handleSessionUpdate, enabled: Boolean(session) });
+
+  const [showApiErrorModal, setShowApiErrorModal] = useState(false);
+
+  // Show API error modal when fetch fails or stream fails
+  const isApiError = error === "errors.fetch_failed" || error === "errors.stream_failed";
 
   if (!hydrated) {
     return (
@@ -119,9 +127,35 @@ export default function SessionPage() {
 
       {error ? (
         <div className="rounded-[var(--corner-radius-medium)] border border-[var(--app-border-color)] bg-red-500/10 p-3 text-xs text-red-400">
-          {errorMessage}
+          <div className="flex items-center justify-between">
+            <span>{errorMessage}</span>
+            <div className="flex gap-2">
+              {isApiError ? (
+                <button
+                  onClick={() => setShowApiErrorModal(true)}
+                  className="text-[var(--app-claude-orange)] hover:underline"
+                >
+                  {t("errors.api_limit_title")}
+                </button>
+              ) : null}
+              {showRetry ? (
+                <button
+                  onClick={retry}
+                  className="text-[var(--app-claude-orange)] hover:underline"
+                >
+                  {t("errors.retry")}
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
+
+      <ApiErrorModal
+        isOpen={showApiErrorModal}
+        onClose={() => setShowApiErrorModal(false)}
+        onRetry={showRetry ? retry : undefined}
+      />
 
       {currentGroup ? (
         <QuestionCard
