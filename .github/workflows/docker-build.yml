@@ -51,3 +51,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+
+      - name: Trigger Dokploy deployment
+        run: |
+          curl -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+            --fail \
+            --silent \
+            --show-error \
+            --max-time 30
