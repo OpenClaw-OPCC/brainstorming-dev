@@ -1,0 +1,95 @@
+{
+  "home": {
+    "title": "头脑风暴",
+    "subtitle": "将模糊想法转化为完整需求",
+    "placeholder": "描述你的想法...",
+    "start": "开始头脑风暴",
+    "templates": "快速开始模板",
+    "history": "最近的会话"
+  },
+  "session": {
+    "guide": "引导",
+    "loading": "正在梳理你的想法...",
+    "back": "返回",
+    "submit": "提交答案",
+    "finish": "完成并生成总结",
+    "yes": "是",
+    "no": "否",
+    "other": "其他",
+    "other_placeholder": "请输入你的回答..."
+  },
+  "summary": {
+    "title": "需求总结",
+    "editor": "Markdown",
+    "preview": "预览",
+    "copy": "复制 Markdown",
+    "download": "下载 .md"
+  },
+  "history": {
+    "title": "历史记录",
+    "continue": "继续",
+    "view": "查看",
+    "delete": "删除",
+    "back": "返回历史列表",
+    "not_found": "未找到会话。",
+    "status_active": "进行中",
+    "status_completed": "已完成",
+    "empty": "暂无会话"
+  },
+  "templates": {
+    "technical": {
+      "title": "技术方案",
+      "description": "架构、技术栈、风险与约束",
+      "prompt": "我想设计一个技术方案，用于..."
+    },
+    "feature": {
+      "title": "功能需求",
+      "description": "用户故事、边界、优先级",
+      "prompt": "我想完善一个功能需求，它是..."
+    },
+    "bugfix": {
+      "title": "Bug 修复",
+      "description": "复现步骤、根因分析、修复方案",
+      "prompt": "我需要排查一个问题：..."
+    },
+    "refactor": {
+      "title": "重构计划",
+      "description": "现状痛点、目标设计、迁移路径",
+      "prompt": "我想重构代码，让它..."
+    }
+  },
+  "common": {
+    "light": "浅色",
+    "dark": "深色",
+    "language": "语言",
+    "not_found": "未找到会话。",
+    "go_home": "返回首页"
+  },
+  "header": {
+    "brand": "Brainstorming",
+    "nav": {
+      "home": "头脑风暴",
+      "history": "历史记录",
+      "templates": "模板"
+    }
+  },
+  "footer": {
+    "by": "BY 刘小排",
+    "x": "X"
+  },
+  "errors": {
+    "fetch_failed": "获取问题失败",
+    "no_questions": "未返回问题",
+    "parse_failed": "解析 AI 输出失败",
+    "stream_failed": "流式输出异常",
+    "repeat_group": "重复问题已被跳过，正在重试",
+    "api_limit_title": "API 额度用尽",
+    "api_limit_description": "公共 API 额度有限，可能已用尽。你可以克隆项目使用自己的 API Key。",
+    "api_limit_steps": "使用步骤：",
+    "api_limit_clone": "克隆 GitHub 仓库",
+    "api_limit_env": "在 .env 中配置你的 ANTHROPIC_API_KEY",
+    "api_limit_run": "运行 pnpm dev 启动本地服务",
+    "retry": "重试",
+    "close": "关闭"
+  }
+}

@@ -1,0 +1,31 @@
+name: Deploy to Vercel (Production)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-prod-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Deploy Hook (if configured)
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL is not set. Skipping Vercel deploy trigger."
+            echo "Set it in: GitHub repo Settings -> Secrets and variables -> Actions -> New repository secret"
+            exit 0
+          fi
+
+          echo "Triggering Vercel production deployment via Deploy Hook..."
+          curl -fsSL -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          echo "Done."

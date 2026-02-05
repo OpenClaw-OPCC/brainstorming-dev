@@ -1,26 +1,90 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Serif+4:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --app-claude-ink: #151412;
+  --app-claude-ivory: #f8f6f2;
+  --app-claude-sand: #efece2;
+  --app-claude-stone: #a7a297;
+  --app-claude-orange: #e0704e;
+  --app-claude-orange-strong: #d4603f;
+  --app-claude-blue: #6a8fba;
+  --app-claude-green: #74835a;
+
+  --app-primary-background: #f8f6f2;
+  --app-secondary-background: #ffffff;
+  --app-tertiary-background: #f1eee6;
+  --app-primary-foreground: #151412;
+  --app-secondary-foreground: #6c675e;
+  --app-border-color: #e1ddd3;
+
+  --app-header-background: #f5f2ea;
+  --app-footer-background: #f5f2ea;
+  --app-header-foreground: #151412;
+  --app-header-muted: #6c675e;
+  --app-header-border: #e1ddd3;
+  --app-header-pill: rgba(21, 20, 18, 0.08);
+
+  --app-spacing-small: 4px;
+  --app-spacing-medium: 8px;
+  --app-spacing-large: 12px;
+  --app-spacing-xlarge: 16px;
+
+  --corner-radius-small: 4px;
+  --corner-radius-medium: 6px;
+  --corner-radius-large: 8px;
+}
+
+.dark {
+  --app-primary-background: #141312;
+  --app-secondary-background: #1b1a18;
+  --app-tertiary-background: #22201d;
+  --app-primary-foreground: #f8f6f2;
+  --app-secondary-foreground: #b8b2a7;
+  --app-border-color: #2b2926;
+
+  --app-header-background: #0f0e0d;
+  --app-footer-background: #0f0e0d;
+  --app-header-foreground: #f8f6f2;
+  --app-header-muted: #b8b2a7;
+  --app-header-border: #2a2826;
+  --app-header-pill: rgba(248, 246, 242, 0.08);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--app-primary-background);
+  --color-foreground: var(--app-primary-foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--app-primary-background);
+  color: var(--app-primary-foreground);
+  font-family: "Source Sans 3", "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Source Serif 4", "Times New Roman", serif;
+  letter-spacing: -0.01em;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--app-claude-orange);
 }
