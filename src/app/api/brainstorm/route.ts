@@ -42,15 +42,23 @@ function buildUserMessage(input: string | undefined, history: BrainstormRequest[
     .map((item, index) => `Q${index + 1}: ${item.question}\nA${index + 1}: ${item.answer}`)
     .join("\n");
 
+  // Estimate question groups (roughly 3 questions per group)
+  const groupCount = Math.ceil(history.length / 3);
+  const progressHint = groupCount >= 6
+    ? `\n\n[SYSTEM: You have asked ${groupCount} question groups (${history.length} questions total). You MUST call session_end NOW - no more questions allowed.]`
+    : groupCount >= 4
+    ? `\n\n[SYSTEM: You have asked ${groupCount} question groups. Wrap up with 1-2 more groups maximum, then call session_end.]`
+    : "";
+
   if (action === "start") {
-    return `Initial idea:\n${input}\n\nPrevious Q/A:\n${historyText || "(none)"}`;
+    return `Initial idea:\n${input}\n\nPrevious Q/A:\n${historyText || "(none)"}${progressHint}`;
   }
 
   if (action === "retry") {
-    return `Please retry the last question group.\n\nPrevious Q/A:\n${historyText || "(none)"}`;
+    return `Please retry the last question group.\n\nPrevious Q/A:\n${historyText || "(none)"}${progressHint}`;
   }
 
-  return `Continue the brainstorming.\n\nPrevious Q/A:\n${historyText || "(none)"}`;
+  return `Continue the brainstorming.\n\nPrevious Q/A:\n${historyText || "(none)"}${progressHint}`;
 }
 
 export async function POST(request: Request) {

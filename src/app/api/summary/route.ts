@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   try {
     const markdownResponse = await client.messages.create({
       model: defaultModel,
-      max_tokens: 1400,
+      max_tokens: 4000,
       system: buildSummaryMarkdownPrompt(body.language),
       messages: [
         {

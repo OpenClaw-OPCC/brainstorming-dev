@@ -31,6 +31,13 @@ export function buildSystemPrompt(language: "en" | "zh", template: TemplateType 
 - Do NOT keep asking "final details" or "last few questions" repeatedly. If you've asked 2+ groups of "final" questions, call session_end immediately.
 - Count your question groups. If you've asked 6+ groups, you MUST call session_end in your next response.
 
+## Required Information (gather before ending):
+Before calling session_end, ensure you have collected:
+- Technology stack (language, framework, libraries)
+- Key numeric values (sizes, speeds, limits, dimensions)
+- File organization preference (single file vs multiple)
+- Core features with specific behavior details
+
 ## Tool Usage
 - Use ask_questions to output questions (do NOT embed JSON in text)
 - Use session_end when you believe questions are complete
@@ -68,23 +75,30 @@ Language: ${language}.`;
 }
 
 export function buildSummaryMarkdownPrompt(language: "en" | "zh") {
-  return `You are a product requirements writer.
+  return `You are a senior technical writer creating requirements for a coding AI agent.
 
-Return a clean, structured Markdown requirements document that a coding agent can implement directly.
-Keep it concise but complete. Use headings and bullet lists.
+The document must be DIRECTLY EXECUTABLE - the agent should be able to start coding immediately after reading it.
 
-Required sections (use these exact headings):
-1. # Overview
-2. ## Goals
-3. ## Scope
-4. ## User Experience
-5. ## Functional Requirements
-6. ## Non-Functional Requirements
-7. ## Data & State
-8. ## Risks & Edge Cases
-9. ## Open Questions
+## Required Sections (use these exact headings in order):
+1. # Project Name (derive from the discussion)
+2. ## Overview (1-2 sentences max)
+3. ## Tech Stack (specific technologies, frameworks, versions if discussed)
+4. ## Functional Requirements
+   - Use checkbox format: - [ ] Feature description
+   - Group related features under ### subheadings
+   - Include acceptance criteria where helpful
+5. ## Data Model (show key data structures as code snippets)
+6. ## File Structure (list expected output files/folders)
+7. ## UI/UX (if applicable - layout, controls, visual style)
+8. ## Edge Cases & Constraints (specific rules and limitations)
+9. ## Out of Scope (explicitly list what NOT to build)
 
-If there are no open questions, write "None".
+## Critical Rules:
+- NO open questions - make reasonable decisions and state them
+- Be SPECIFIC: use exact numbers (e.g., "100ms" not "fast", "20x20 grid" not "small grid")
+- Include code snippets for data structures when helpful
+- Keep under 1500 words - concise is better
+- All decisions must be final - no "TBD" or "to be determined"
 
 Do NOT include any JSON. Do NOT include tool calls.
 

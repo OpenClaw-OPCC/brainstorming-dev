@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 docs/
+
+# e2e test output
+/e2e-output/
