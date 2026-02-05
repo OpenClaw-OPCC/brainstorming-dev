@@ -200,6 +200,19 @@ export async function POST(request: Request) {
   let questions: Record<string, unknown> | null = null;
   let end: Record<string, unknown> | null = null;
 
+  // Log a bit of runtime config in production so Vercel Logs can show what's wrong.
+  // Do NOT log the API key itself.
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("[brainstorm] Missing ANTHROPIC_API_KEY", {
+      sessionId: body.sessionId,
+      action: body.action,
+      language: body.language,
+      historyCount: body.history.length,
+      model: defaultModel,
+      baseURL: process.env.ANTHROPIC_BASE_URL || "default",
+    });
+  }
+
   try {
     const message = await createMessage(true);
     const content = message.content ?? [];
@@ -247,8 +260,30 @@ export async function POST(request: Request) {
         text = fallbackText || text;
       }
     }
-  } catch {
-    return new Response(JSON.stringify({ error: "Failed to fetch questions" }), { status: 500 });
+  } catch (err) {
+    const e = err as Record<string, unknown>;
+    const status = typeof e.status === "number" ? e.status : undefined;
+    const message = err instanceof Error ? err.message : String(err);
+
+    console.error("[brainstorm] Upstream API error", {
+      sessionId: body.sessionId,
+      action: body.action,
+      language: body.language,
+      historyCount: body.history.length,
+      model: defaultModel,
+      baseURL: process.env.ANTHROPIC_BASE_URL || "default",
+      status,
+      message,
+    });
+
+    return new Response(
+      JSON.stringify({
+        error: "Failed to fetch questions",
+        upstreamStatus: status,
+        message,
+      }),
+      { status: 500 },
+    );
   }
 
   const responseStream = new ReadableStream({
