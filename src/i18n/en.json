@@ -1,0 +1,87 @@
+{
+  "home": {
+    "title": "Brainstorming",
+    "subtitle": "Turn vague ideas into complete requirements",
+    "placeholder": "Describe your idea...",
+    "start": "Start Brainstorming",
+    "templates": "Quick Start Templates",
+    "history": "Recent Sessions"
+  },
+  "session": {
+    "guide": "Guide",
+    "loading": "Thinking through your idea...",
+    "back": "Back",
+    "submit": "Submit answers",
+    "finish": "Finish & Generate Summary",
+    "yes": "Yes",
+    "no": "No",
+    "other": "Other",
+    "other_placeholder": "Type your answer..."
+  },
+  "summary": {
+    "title": "Requirements Summary",
+    "editor": "Markdown",
+    "preview": "Preview",
+    "copy": "Copy Markdown",
+    "download": "Download .md"
+  },
+  "history": {
+    "title": "History",
+    "continue": "Continue",
+    "view": "View",
+    "delete": "Delete",
+    "back": "Back to history",
+    "not_found": "Session not found.",
+    "status_active": "Active",
+    "status_completed": "Completed",
+    "empty": "No sessions yet"
+  },
+  "templates": {
+    "technical": {
+      "title": "Technical Solution",
+      "description": "Architecture, stack, risks and constraints",
+      "prompt": "I want to design the technical solution for..."
+    },
+    "feature": {
+      "title": "Feature Requirements",
+      "description": "User stories, edge cases, priorities",
+      "prompt": "I want to refine the requirements for a feature that..."
+    },
+    "bugfix": {
+      "title": "Bug Fix Plan",
+      "description": "Repro steps, root cause, fix plan",
+      "prompt": "I need help debugging a problem where..."
+    },
+    "refactor": {
+      "title": "Refactor Plan",
+      "description": "Current pain points, target design, migration",
+      "prompt": "I want to refactor the codebase to..."
+    }
+  },
+  "common": {
+    "light": "Light",
+    "dark": "Dark",
+    "language": "Language",
+    "not_found": "Session not found.",
+    "go_home": "Go Home"
+  },
+  "header": {
+    "brand": "Brainstorming",
+    "nav": {
+      "home": "Brainstorming",
+      "history": "History",
+      "templates": "Templates"
+    }
+  },
+  "footer": {
+    "by": "BY 刘小排",
+    "x": "X"
+  },
+  "errors": {
+    "fetch_failed": "Failed to fetch questions",
+    "no_questions": "No questions returned",
+    "parse_failed": "Failed to parse AI output",
+    "stream_failed": "Streaming error",
+    "repeat_group": "Same question group returned. Retrying..."
+  }
+}
