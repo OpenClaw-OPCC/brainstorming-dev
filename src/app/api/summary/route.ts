@@ -79,6 +79,18 @@ export async function POST(request: Request) {
     .map((item, index) => `Q${index + 1}: ${item.question}\nA${index + 1}: ${item.answer}`)
     .join("\n");
 
+  // Log a bit of runtime config in production so Vercel Logs can show what's wrong.
+  // Do NOT log the API key itself.
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("[summary] Missing ANTHROPIC_API_KEY", {
+      sessionId: body.sessionId,
+      language: body.language,
+      historyCount: body.history.length,
+      model: defaultModel,
+      baseURL: process.env.ANTHROPIC_BASE_URL || "default",
+    });
+  }
+
   try {
     const markdownResponse = await client.messages.create({
       model: defaultModel,
@@ -102,8 +114,22 @@ export async function POST(request: Request) {
     if (markdownContent.trim()) {
       return Response.json({ summary: null, markdown: markdownContent });
     }
-  } catch {
-    // fall through
+  } catch (err) {
+    const e = err as Record<string, unknown>;
+    const status = typeof e.status === "number" ? e.status : undefined;
+    const message = err instanceof Error ? err.message : String(err);
+
+    console.error("[summary] Upstream API error (markdown attempt)", {
+      sessionId: body.sessionId,
+      language: body.language,
+      historyCount: body.history.length,
+      model: defaultModel,
+      baseURL: process.env.ANTHROPIC_BASE_URL || "default",
+      status,
+      message,
+    });
+
+    // fall through to tool-based summary
   }
 
   const toolChoice = { type: "tool", name: "generate_summary" } as const;
@@ -140,7 +166,21 @@ export async function POST(request: Request) {
       tool_choice: toolChoice,
       stream: false as const,
     })) as unknown as { content: ContentBlock[] };
-  } catch {
+  } catch (err) {
+    const e = err as Record<string, unknown>;
+    const status = typeof e.status === "number" ? e.status : undefined;
+    const message = err instanceof Error ? err.message : String(err);
+
+    console.error("[summary] Upstream API error (tool attempt)", {
+      sessionId: body.sessionId,
+      language: body.language,
+      historyCount: body.history.length,
+      model: defaultModel,
+      baseURL: process.env.ANTHROPIC_BASE_URL || "default",
+      status,
+      message,
+    });
+
     response = null;
   }
 
