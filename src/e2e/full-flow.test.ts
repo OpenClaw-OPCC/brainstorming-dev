@@ -61,10 +61,14 @@ async function parseSSE(response: Response): Promise<BrainstormEvent[]> {
   return events;
 }
 
-function autoAnswer(questions: QuestionData[]): Array<{ question: string; answer: string }> {
+function autoAnswer(
+  questions: QuestionData[],
+  language: "en" | "zh"
+): Array<{ question: string; answer: string }> {
+  const defaultText = language === "en" ? "Default text answer" : "默认文本回答";
   return questions.map((q) => {
     if (q.type === "text") {
-      return { question: q.question, answer: "默认文本回答" };
+      return { question: q.question, answer: defaultText };
     }
     if (q.type === "yesno") {
       return { question: q.question, answer: "yes" };
@@ -140,7 +144,7 @@ async function runBrainstormFlow(input: string, language: "en" | "zh"): Promise<
         continue;
       }
       totalQuestions += questions.length;
-      history.push(...autoAnswer(questions));
+      history.push(...autoAnswer(questions, language));
     }
   }
 
@@ -169,6 +173,66 @@ async function generateSummary(
 
   const data = await response.json();
   return { markdown: data.markdown || "" };
+}
+
+interface TestArtifacts {
+  input: string;
+  language: "en" | "zh";
+  flow: FlowResult;
+  markdown: string;
+  quality: ReturnType<typeof validateMarkdownQuality>;
+  timestamp: string;
+}
+
+function saveArtifacts(artifacts: TestArtifacts): string {
+  if (!existsSync(OUTPUT_DIR)) {
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
+
+  const baseFilename = `${artifacts.language}-${artifacts.timestamp}`;
+
+  // Save markdown
+  const mdFilename = `requirements-${baseFilename}.md`;
+  writeFileSync(join(OUTPUT_DIR, mdFilename), artifacts.markdown);
+
+  // Save full test report (JSON)
+  const reportFilename = `report-${baseFilename}.json`;
+  const report = {
+    input: artifacts.input,
+    language: artifacts.language,
+    timestamp: artifacts.timestamp,
+    flow: {
+      rounds: artifacts.flow.rounds,
+      totalQuestions: artifacts.flow.totalQuestions,
+      endedNaturally: artifacts.flow.endedNaturally,
+      errors: artifacts.flow.errors,
+      historyCount: artifacts.flow.history.length,
+    },
+    quality: artifacts.quality,
+  };
+  writeFileSync(join(OUTPUT_DIR, reportFilename), JSON.stringify(report, null, 2));
+
+  // Save Q&A history
+  const historyFilename = `history-${baseFilename}.md`;
+  const historyMd = [
+    `# Q&A History`,
+    ``,
+    `**Input:** ${artifacts.input}`,
+    `**Language:** ${artifacts.language}`,
+    `**Rounds:** ${artifacts.flow.rounds}`,
+    `**Total Questions:** ${artifacts.flow.totalQuestions}`,
+    `**Ended Naturally:** ${artifacts.flow.endedNaturally}`,
+    `**Errors:** ${artifacts.flow.errors.length > 0 ? artifacts.flow.errors.join(", ") : "None"}`,
+    ``,
+    `---`,
+    ``,
+    ...artifacts.flow.history.map(
+      (item, i) => `## Q${i + 1}: ${item.question}\n\n**A:** ${item.answer}\n`
+    ),
+  ].join("\n");
+  writeFileSync(join(OUTPUT_DIR, historyFilename), historyMd);
+
+  return baseFilename;
 }
 
 function validateMarkdownQuality(markdown: string): {
@@ -312,14 +376,17 @@ describe("Brainstorming Full E2E Flow", () => {
       // Open questions should be resolved
       expect(quality.stats.hasOpenQuestions).toBe(false);
 
-      // Save markdown to file for review
-      if (!existsSync(OUTPUT_DIR)) {
-        mkdirSync(OUTPUT_DIR, { recursive: true });
-      }
+      // Save all artifacts for debugging
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = `requirements-zh-${timestamp}.md`;
-      writeFileSync(join(OUTPUT_DIR, filename), summary.markdown);
-      console.log(`\n📁 Saved to: e2e-output/${filename}`);
+      const baseFilename = saveArtifacts({
+        input: INPUT,
+        language: "zh",
+        flow,
+        markdown: summary.markdown,
+        quality,
+        timestamp,
+      });
+      console.log(`\n📁 Saved artifacts: e2e-output/*-${baseFilename}.*`);
 
       console.log("\n🎉 E2E test passed!");
     },
@@ -327,26 +394,76 @@ describe("Brainstorming Full E2E Flow", () => {
   );
 
   it(
-    "completes brainstorming flow (English)",
+    "completes brainstorming flow and generates quality markdown (English)",
     async () => {
       const input = "I want to build a unique snake game";
-      console.log(`🚀 Starting English flow: "${input}"`);
+      console.log("🚀 Starting brainstorming flow (English)...");
+      console.log(`   Input: "${input}"`);
+      console.log(`   Base URL: ${BASE_URL}`);
 
+      // Run brainstorming flow
       const flow = await runBrainstormFlow(input, "en");
 
-      console.log(`   Rounds: ${flow.rounds}, Questions: ${flow.totalQuestions}`);
+      console.log(`\n📊 Flow Results:`);
+      console.log(`   Rounds: ${flow.rounds}`);
+      console.log(`   Total Questions: ${flow.totalQuestions}`);
+      console.log(`   Ended Naturally: ${flow.endedNaturally}`);
+      console.log(`   Errors: ${flow.errors.length > 0 ? flow.errors.join(", ") : "None"}`);
 
-      // Allow parse errors
+      // Validate flow - allow some parse errors (AI sometimes doesn't follow format)
       const criticalErrors = flow.errors.filter((e) => !e.includes("parse"));
       expect(criticalErrors).toHaveLength(0);
       expect(flow.totalQuestions).toBeGreaterThanOrEqual(3);
+      expect(flow.rounds).toBeLessThanOrEqual(12);
 
-      if (flow.history.length >= 3) {
-        const summary = await generateSummary(flow.history, "en");
-        expect(summary.markdown.length).toBeGreaterThan(100);
+      // Only generate summary if we have enough history
+      if (flow.history.length < 3) {
+        console.log("⚠️ Not enough history to generate summary, skipping...");
+        return;
       }
 
-      console.log("✅ English flow passed!");
+      // Generate summary
+      console.log("\n📝 Generating summary...");
+      const summary = await generateSummary(flow.history, "en");
+
+      expect(summary.error).toBeUndefined();
+      expect(summary.markdown).toBeTruthy();
+
+      // Validate markdown quality
+      const quality = validateMarkdownQuality(summary.markdown);
+
+      console.log(`\n✅ Markdown Quality:`);
+      console.log(`   Length: ${quality.stats.length} chars`);
+      console.log(`   Headings: ${quality.stats.headings}`);
+      console.log(`   Sections: ${quality.stats.sections.join(", ")}`);
+      console.log(`   Has Checkboxes: ${quality.stats.hasCheckboxes}`);
+      console.log(`   Has Code Blocks: ${quality.stats.hasCodeBlocks}`);
+      console.log(`   Has Open Questions: ${quality.stats.hasOpenQuestions}`);
+
+      if (quality.issues.length > 0) {
+        console.log(`\n⚠️ Quality Issues:`);
+        quality.issues.forEach((issue) => console.log(`   - ${issue}`));
+      }
+
+      // Assert quality - be lenient on length since AI output varies
+      expect(quality.stats.length).toBeGreaterThanOrEqual(200);
+      expect(quality.stats.headings).toBeGreaterThanOrEqual(2);
+      expect(quality.issues.filter((i) => i.includes("remnants"))).toHaveLength(0);
+      expect(quality.stats.hasOpenQuestions).toBe(false);
+
+      // Save all artifacts for debugging
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const baseFilename = saveArtifacts({
+        input,
+        language: "en",
+        flow,
+        markdown: summary.markdown,
+        quality,
+        timestamp,
+      });
+      console.log(`\n📁 Saved artifacts: e2e-output/*-${baseFilename}.*`);
+
+      console.log("\n🎉 E2E test passed (English)!");
     },
     300000
   );
