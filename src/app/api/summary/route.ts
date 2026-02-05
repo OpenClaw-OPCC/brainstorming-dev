@@ -3,6 +3,7 @@ import { buildSummaryMarkdownPrompt, buildSummaryPrompt } from "@/lib/prompts";
 import { summaryToMarkdown } from "@/lib/markdown";
 import { createMockSummaryResponse } from "@/lib/mockBrainstorm";
 import type { Summary } from "@/types/summary";
+import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
 
   const client = getAnthropicClient();
 
-  const tools = [
+  const tools: ToolUnion[] = [
     {
       name: "generate_summary",
       input_schema: {
@@ -85,10 +86,11 @@ export async function POST(request: Request) {
       system: buildSummaryMarkdownPrompt(body.language),
       messages: [
         {
-          role: "user",
+          role: "user" as const,
           content: `Write the requirements document based on this Q&A:\n\n${historyText}`,
         },
       ],
+      stream: false as const,
     });
 
     const markdownContent = (markdownResponse.content ?? [])
@@ -112,46 +114,68 @@ export async function POST(request: Request) {
     system: buildSummaryPrompt(body.language),
     messages: [
       {
-        role: "user",
+        role: "user" as const,
         content: `Summarize the brainstorming session into a structured requirements summary.\n\n${historyText}`,
       },
     ],
   };
 
-  let response;
+  const isSummary = (value: unknown): value is Summary => {
+    if (!value || typeof value !== "object") return false;
+    const v = value as Summary;
+    return (
+      typeof v.overview === "string" &&
+      Array.isArray(v.features) &&
+      Array.isArray(v.risks) &&
+      Array.isArray(v.openQuestions) &&
+      typeof v.generatedAt === "string"
+    );
+  };
+
+  let response: { content: ContentBlock[] } | null;
   try {
-    response = await client.messages.create({
+    response = (await client.messages.create({
       ...requestPayload,
       tools,
       tool_choice: toolChoice,
-    });
+      stream: false as const,
+    })) as unknown as { content: ContentBlock[] };
   } catch {
     response = null;
   }
 
-  const content = response?.content ?? [];
+  const content: ContentBlock[] = response?.content ?? [];
   debug("content", content);
 
   const toolBlock = content.find(
-    (block) => block.type === "tool_use" && "name" in block && block.name === "generate_summary",
-  ) as { type: "tool_use"; input: { summary?: Summary } } | undefined;
+    (block) => block.type === "tool_use" && block.name === "generate_summary",
+  );
 
-  if (toolBlock?.type === "tool_use") {
-    const summary = toolBlock.input.summary ?? (toolBlock.input as Summary);
-    const markdown = summaryToMarkdown(summary);
-    return Response.json({ summary, markdown });
+  if (toolBlock && toolBlock.type === "tool_use") {
+    const input = (toolBlock.input ?? {}) as Record<string, unknown>;
+    const summaryCandidate = (input.summary ?? toolBlock.input) as unknown;
+    if (isSummary(summaryCandidate)) {
+      const markdown = summaryToMarkdown(summaryCandidate);
+      return Response.json({ summary: summaryCandidate, markdown });
+    }
   }
 
-  const textBlocks = content.filter((block) => block.type === "text") as Array<{ text?: string }>;
-  const text = textBlocks.map((block) => block.text ?? "").join("\n");
+  const textBlocks = content.filter(
+    (block): block is Extract<ContentBlock, { type: "text" }> => block.type === "text",
+  );
+  const text = textBlocks.map((block) => block.text).join("\n");
+
   const jsonMatch = text.match(/```json\s*([\s\S]*?)```/i);
   if (jsonMatch?.[1]) {
     try {
-      const parsed = JSON.parse(jsonMatch[1]) as { summary?: Summary } | Summary;
-      const summary = "summary" in parsed ? parsed.summary : parsed;
-      if (summary) {
-        const markdown = summaryToMarkdown(summary);
-        return Response.json({ summary, markdown });
+      const parsed = JSON.parse(jsonMatch[1]) as unknown;
+      const summaryCandidate =
+        parsed && typeof parsed === "object" && "summary" in (parsed as Record<string, unknown>)
+          ? (parsed as { summary?: unknown }).summary
+          : parsed;
+      if (isSummary(summaryCandidate)) {
+        const markdown = summaryToMarkdown(summaryCandidate);
+        return Response.json({ summary: summaryCandidate, markdown });
       }
     } catch {
       // fall through

@@ -118,7 +118,7 @@ export function normalizeQuestion(
     let foundOther = false;
     const normalizedOptions = options
       .map((option, index) => {
-        const optionAny = option as Record<string, unknown>;
+        const optionAny = option as unknown as Record<string, unknown>;
         const idRaw =
           typeof optionAny.id === "string"
             ? optionAny.id

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 const INPUT = "我要一个与众不同的贪吃蛇";
-const baseUrl = process.env.E2E_BASE_URL;
-const mockEnabled = process.env.MOCK_BRAINSTORM === "1";
+const getBaseUrl = () => process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
 
 interface QuestionOption {
   id: string;
@@ -16,6 +15,13 @@ interface QuestionData {
 }
 
 type BrainstormEvent = { type: string; data?: unknown };
+
+type QuestionsEvent = {
+  type: "questions";
+  data: { groupId: string; questions: QuestionData[] };
+};
+
+type EndEvent = { type: "end"; data: { ready: boolean } };
 
 async function collectEvents(response: Response): Promise<BrainstormEvent[]> {
   const reader = response.body?.getReader();
@@ -62,12 +68,13 @@ function buildHistoryFromQuestions(questions: QuestionData[]) {
 }
 
 describe("Brainstorming E2E (mock)", () => {
-  if (!baseUrl || !mockEnabled) {
-    it.skip("E2E flow requires E2E_BASE_URL and MOCK_BRAINSTORM=1", () => {});
+  if (process.env.MOCK_BRAINSTORM !== "1") {
+    it.skip("E2E flow requires MOCK_BRAINSTORM=1", () => {});
     return;
   }
 
   it("runs from initial input to summary markdown", async () => {
+    const baseUrl = getBaseUrl();
     let history: Array<{ question: string; answer: string }> = [];
     let totalQuestions = 0;
 
@@ -88,8 +95,11 @@ describe("Brainstorming E2E (mock)", () => {
       expect(response.ok).toBe(true);
 
       const events = await collectEvents(response);
-      const questionsEvent = events.find((event) => event.type === "questions");
-      const endEvent = events.find((event) => event.type === "end");
+      const questionsEvent = events.find(
+        (event): event is QuestionsEvent =>
+          event.type === "questions" && typeof event.data === "object" && event.data !== null,
+      );
+      const endEvent = events.find((event): event is EndEvent => event.type === "end") as EndEvent | undefined;
 
       if (questionsEvent) {
         const questions = questionsEvent.data.questions ?? [];

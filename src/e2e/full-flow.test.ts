@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 
 const INPUT = "我要做一个与众不同的贪吃蛇";
-const BASE_URL = process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
+const getBaseUrl = () => process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
 const OUTPUT_DIR = join(process.cwd(), "e2e-output");
 
 interface QuestionOption {
@@ -100,12 +100,13 @@ async function runBrainstormFlow(input: string, language: "en" | "zh"): Promise<
   let totalQuestions = 0;
   let endedNaturally = false;
 
+  const baseUrl = getBaseUrl();
   const maxRounds = 12;
 
   for (let step = 0; step < maxRounds; step++) {
     const action = step === 0 ? "start" : "answer";
 
-    const response = await fetch(`${BASE_URL}/api/brainstorm`, {
+    const response = await fetch(`${baseUrl}/api/brainstorm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -156,8 +157,9 @@ async function generateSummary(
   language: "en" | "zh"
 ): Promise<{ markdown: string; error?: string }> {
   const sessionId = `e2e-summary-${Date.now()}`;
+  const baseUrl = getBaseUrl();
 
-  const response = await fetch(`${BASE_URL}/api/summary`, {
+  const response = await fetch(`${baseUrl}/api/summary`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -320,9 +322,10 @@ describe("Brainstorming Full E2E Flow", () => {
   it(
     "completes brainstorming flow and generates quality markdown (Chinese)",
     async () => {
+      const baseUrl = getBaseUrl();
       console.log("🚀 Starting brainstorming flow...");
       console.log(`   Input: "${INPUT}"`);
-      console.log(`   Base URL: ${BASE_URL}`);
+      console.log(`   Base URL: ${baseUrl}`);
 
       // Run brainstorming flow
       const flow = await runBrainstormFlow(INPUT, "zh");
@@ -396,10 +399,11 @@ describe("Brainstorming Full E2E Flow", () => {
   it(
     "completes brainstorming flow and generates quality markdown (English)",
     async () => {
+      const baseUrl = getBaseUrl();
       const input = "I want to build a unique snake game";
       console.log("🚀 Starting brainstorming flow (English)...");
       console.log(`   Input: "${input}"`);
-      console.log(`   Base URL: ${BASE_URL}`);
+      console.log(`   Base URL: ${baseUrl}`);
 
       // Run brainstorming flow
       const flow = await runBrainstormFlow(input, "en");

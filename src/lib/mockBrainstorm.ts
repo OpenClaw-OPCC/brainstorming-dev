@@ -277,7 +277,7 @@ export function getMockSummary(language: Language) {
       risks: [
         { description: "多人同步复杂度高", mitigation: "先做异步排行榜版本", severity: "high" },
       ],
-      openQuestions: ["首发平台优先级？", "商业模式是否需要内购？"],
+      openQuestions: [],
       generatedAt: new Date().toISOString(),
     };
   }
@@ -294,7 +294,7 @@ export function getMockSummary(language: Language) {
     risks: [
       { description: "Real-time multiplayer complexity", mitigation: "Start with async mode", severity: "high" },
     ],
-    openQuestions: ["Platform launch priority?", "Premium vs IAP?"],
+    openQuestions: [],
     generatedAt: new Date().toISOString(),
   };
 }
@@ -320,7 +320,7 @@ export function createMockBrainstormStream({
   return new ReadableStream({
     start(controller) {
       const send = (payload: Record<string, unknown>) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\\n\\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
 
       send({ type: "text", data: guide });

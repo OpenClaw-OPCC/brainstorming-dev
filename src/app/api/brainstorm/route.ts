@@ -3,6 +3,7 @@ import { buildSystemPrompt } from "@/lib/prompts";
 import { normalizeQuestionsPayload } from "@/lib/questions";
 import { createMockBrainstormStream } from "@/lib/mockBrainstorm";
 import type { TemplateType } from "@/types/session";
+import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
 
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
 
   const client = getAnthropicClient();
 
-  const tools = [
+  const tools: ToolUnion[] = [
     {
       name: "ask_questions",
       input_schema: {
@@ -165,32 +166,33 @@ export async function POST(request: Request) {
         },
       ],
       tools: withTools ? tools : undefined,
-      stream: false,
+      stream: false as const,
     });
   };
 
-  const parseContent = (content: Array<Record<string, unknown>>) => {
+  const parseContent = (content: ContentBlock[]) => {
     let text = "";
     let questions: Record<string, unknown> | null = null;
     let end: Record<string, unknown> | null = null;
     let sawTool = false;
+
     for (const block of content) {
-      const blockType = typeof block.type === "string" ? block.type : "";
-      const blockName = typeof block.name === "string" ? block.name : "";
-      if (blockType === "text" && typeof block.text === "string") {
+      if (block.type === "text") {
         text += block.text;
       }
-      if (blockType === "tool_use") {
+
+      if (block.type === "tool_use") {
         sawTool = true;
-        const input = typeof block.input === "object" && block.input ? (block.input as Record<string, unknown>) : {};
-        if (blockName === "ask_questions") {
+        const input = (block.input ?? {}) as Record<string, unknown>;
+        if (block.name === "ask_questions") {
           questions = input;
         }
-        if (blockName === "session_end") {
+        if (block.name === "session_end") {
           end = input;
         }
       }
     }
+
     return { text, questions, end, sawTool };
   };
 
@@ -200,7 +202,7 @@ export async function POST(request: Request) {
 
   try {
     const message = await createMessage(true);
-    const content = (message as { content?: Array<Record<string, unknown>> }).content ?? [];
+    const content = message.content ?? [];
     debug("non_streaming_content", { count: content.length, content });
     const parsed = parseContent(content);
     text = parsed.text;
@@ -227,7 +229,7 @@ export async function POST(request: Request) {
     if (!questions && !end) {
       debug("fallback_non_streaming_attempt");
       const fallbackMessage = await createMessage(false);
-      const fallbackContent = (fallbackMessage as { content?: Array<Record<string, unknown>> }).content ?? [];
+      const fallbackContent = fallbackMessage.content ?? [];
       debug("fallback_non_streaming_content", { count: fallbackContent.length, content: fallbackContent });
       const fallbackParsed = parseContent(fallbackContent);
       const fallbackText = fallbackParsed.text;

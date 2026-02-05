@@ -12,18 +12,24 @@ const dictionaries = { en, zh } as const;
 type Dictionary = (typeof dictionaries)[UiLanguage];
 
 function getNestedValue(obj: Dictionary, path: string): string {
-  return path.split(".").reduce((acc, key) => {
-    if (acc && typeof acc === "object" && key in acc) {
-      return (acc as Record<string, unknown>)[key];
+  const keys = path.split(".").filter(Boolean);
+  let cur: unknown = obj as unknown;
+
+  for (const key of keys) {
+    if (cur && typeof cur === "object" && key in cur) {
+      cur = (cur as Record<string, unknown>)[key];
+    } else {
+      return "";
     }
-    return "";
-  }, obj as unknown as Record<string, unknown>) as string;
+  }
+
+  return typeof cur === "string" ? cur : "";
 }
 
-function parsePathname(pathname: string) {
+function parsePathname(pathname: string): { language: UiLanguage; basePath: string } {
   const segments = pathname.split("/").filter(Boolean);
   const hasLang = segments[0] === "zh" || segments[0] === "en";
-  const language = segments[0] === "zh" ? "zh" : "en";
+  const language: UiLanguage = segments[0] === "zh" ? "zh" : "en";
   const rest = hasLang ? segments.slice(1) : segments;
   const basePath = `/${rest.join("/")}`.replace(/\/$/, "") || "/";
   return { language, basePath };
