@@ -62,8 +62,29 @@ function buildUserMessage(input: string | undefined, history: BrainstormRequest[
   return `Continue the brainstorming.\n\nPrevious Q/A:\n${historyText || "(none)"}${progressHint}`;
 }
 
+const MAX_INPUT_LENGTH = 2000;
+const MAX_CUSTOM_TEXT_LENGTH = 400;
+
 export async function POST(request: Request) {
   const body = (await request.json()) as BrainstormRequest;
+
+  // Validate input length
+  if (body.input && body.input.length > MAX_INPUT_LENGTH) {
+    return new Response(
+      JSON.stringify({ error: `Input exceeds maximum length of ${MAX_INPUT_LENGTH} characters` }),
+      { status: 400 }
+    );
+  }
+
+  // Validate customText in history answers
+  for (const item of body.history) {
+    if (typeof item.answer === "string" && item.answer.length > MAX_CUSTOM_TEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Custom text exceeds maximum length of ${MAX_CUSTOM_TEXT_LENGTH} characters` }),
+        { status: 400 }
+      );
+    }
+  }
   const isDev = process.env.NODE_ENV === "development";
   const debug = (...args: unknown[]) => {
     if (isDev) {

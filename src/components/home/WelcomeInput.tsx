@@ -22,6 +22,7 @@ export function WelcomeInput({ value, placeholder, onChange, onStart, startLabel
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
+        maxLength={2000}
       />
       <button
         className="inline-flex items-center justify-center rounded-[var(--corner-radius-medium)] bg-[var(--app-claude-orange)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"

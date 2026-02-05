@@ -13,6 +13,7 @@ export function OtherInput({ value, onChange, placeholder }: OtherInputProps) {
       placeholder={placeholder}
       value={value}
       onChange={(event) => onChange(event.target.value)}
+      maxLength={400}
     />
   );
 }
