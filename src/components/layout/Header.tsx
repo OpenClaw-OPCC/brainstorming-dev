@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/hooks/useI18n";
 import { useTheme } from "@/hooks/useTheme";
@@ -7,127 +8,234 @@ import { useTheme } from "@/hooks/useTheme";
 export function Header() {
   const { language, setLanguage, t, withLang } = useI18n();
   const { theme, toggle } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const setUiLanguage = (next: typeof language) => {
+    setMenuOpen(false);
+    setLanguage(next);
+  };
 
   return (
     <header className="border-b border-[var(--app-header-border)] bg-[var(--app-header-background)] text-[var(--app-header-foreground)]">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-4">
         <div className="flex items-center gap-5">
-          <Link href={withLang("/")} className="flex items-center gap-3 text-lg font-semibold tracking-[0.08em]">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-claude-orange)]/15 text-[var(--app-claude-orange)]">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <Link
+            href={withLang("/")}
+            className="flex items-center gap-3 text-lg font-semibold tracking-[0.08em]"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--app-claude-orange)] text-white" aria-hidden>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                {/* 左脑轮廓 */}
                 <path
-                  d="M8 6.2c-2.6.9-4.4 3.3-4.4 6.1 0 4.6 3.7 8.5 8.4 9.7 4.7-1.2 8.4-5.1 8.4-9.7 0-2.8-1.8-5.2-4.4-6.1"
+                  d="M12 3C9 3 7 4 6 6C4 6 3 8 3 10C3 12 4 13 4 15C4 17 6 20 10 21C11 21 12 21 12 21"
                   stroke="currentColor"
-                  strokeWidth="1.6"
+                  strokeWidth="2"
                   strokeLinecap="round"
+                  fill="none"
                 />
+                {/* 右脑轮廓 */}
                 <path
-                  d="M6.2 9.2c-1.7-.5-3.2-1.6-4.2-3.3M17.8 9.2c1.7-.5 3.2-1.6 4.2-3.3"
+                  d="M12 3C15 3 17 4 18 6C20 6 21 8 21 10C21 12 20 13 20 15C20 17 18 20 14 21C13 21 12 21 12 21"
                   stroke="currentColor"
-                  strokeWidth="1.6"
+                  strokeWidth="2"
                   strokeLinecap="round"
+                  fill="none"
                 />
-                <path
-                  d="M8.8 11.6c-1.1-1.3-1.3-2.9-.5-4.2M15.2 11.6c1.1-1.3 1.3-2.9.5-4.2"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M9 15.4h6M9.5 17.6l2.5 2 2.5-2"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="10.2" cy="8.9" r="0.7" fill="currentColor" />
-                <circle cx="13.8" cy="8.9" r="0.7" fill="currentColor" />
+                {/* 中线 */}
+                <path d="M12 3V21" stroke="currentColor" strokeWidth="1.5" />
+                {/* 左脑褶皱 */}
+                <path d="M8 8C7 9.5 7 12 8 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M5.5 11C6.5 12 7.5 12 8.5 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                {/* 右脑褶皱 */}
+                <path d="M16 8C17 9.5 17 12 16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M18.5 11C17.5 12 16.5 12 15.5 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </span>
-            <span className="uppercase">{t("header.brand")}</span>
-          </Link>
-          <nav className="hidden items-center gap-5 text-sm text-[var(--app-header-muted)] md:flex">
-            <Link href={withLang("/")} className="hover:text-[var(--app-header-foreground)]">
-              {t("header.nav.home")}
-            </Link>
-            <Link href={withLang("/history")} className="hover:text-[var(--app-header-foreground)]">
-              {t("header.nav.history")}
-            </Link>
-            <Link
-              href={withLang("/#templates")}
-              className="text-[11px] uppercase tracking-[0.24em] text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+            <span
+              className="uppercase text-[var(--app-claude-orange)]"
+              style={{
+                fontFamily: '"Press Start 2P", monospace',
+                fontSize: 'clamp(14px, 2.5vw, 18px)',
+                letterSpacing: '0.02em',
+                textShadow: '2px 2px 0 rgba(224, 112, 78, 0.25)'
+              }}
             >
-              {t("header.nav.templates")}
-            </Link>
-          </nav>
+              {t("header.brand")}
+            </span>
+          </Link>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-[var(--app-header-muted)]">
-          <div className="relative">
-            <label htmlFor="ui-language" className="sr-only">
-              {t("common.language")}
-            </label>
-            <select
-              id="ui-language"
-              className="h-8 appearance-none rounded-full border border-[var(--app-header-border)] bg-[var(--app-header-background)] px-3 pr-8 text-[11px] uppercase tracking-[0.2em] text-[var(--app-header-foreground)] outline-none focus:border-[var(--app-claude-orange)]"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value as typeof language)}
-            >
-              <option value="en">EN</option>
-              <option value="zh">中文</option>
-            </select>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden
-              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--app-header-muted)]"
-            >
-              <path
-                d="M7 10l5 5 5-5"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        {/* Desktop Controls */}
+        <div className="hidden items-center gap-3 md:flex">
+          {/* Language Switcher - Button Group Style */}
+          <fieldset className="flex h-9 items-center rounded-full bg-[var(--app-header-pill)] p-1">
+            <legend className="sr-only">{t("common.language")}</legend>
+            <label className="relative">
+              <input
+                type="radio"
+                name="ui-lang-desktop"
+                value="en"
+                checked={language === "en"}
+                onChange={() => setUiLanguage("en")}
+                className="peer sr-only"
               />
-            </svg>
-          </div>
+              <span
+                className={`relative inline-flex h-7 cursor-pointer select-none items-center rounded-full px-3 text-xs font-medium transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--app-claude-orange)]/40 ${
+                  language === "en"
+                    ? "bg-[var(--app-header-background)] text-[var(--app-header-foreground)] shadow-sm"
+                    : "text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+                }`}
+              >
+                EN
+              </span>
+            </label>
+            <label className="relative">
+              <input
+                type="radio"
+                name="ui-lang-desktop"
+                value="zh"
+                checked={language === "zh"}
+                onChange={() => setUiLanguage("zh")}
+                className="peer sr-only"
+              />
+              <span
+                className={`relative inline-flex h-7 cursor-pointer select-none items-center rounded-full px-3 text-xs font-medium transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--app-claude-orange)]/40 ${
+                  language === "zh"
+                    ? "bg-[var(--app-header-background)] text-[var(--app-header-foreground)] shadow-sm"
+                    : "text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+                }`}
+              >
+                中文
+              </span>
+            </label>
+          </fieldset>
 
+          {/* Theme Toggle */}
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--app-header-border)] bg-[var(--app-header-background)] text-[var(--app-header-foreground)] outline-none transition-colors hover:bg-[var(--app-header-pill)] focus-visible:ring-2 focus-visible:ring-[var(--app-claude-orange)]/40"
+            className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-header-pill)] text-[var(--app-header-muted)] transition-all duration-200 hover:text-[var(--app-header-foreground)]"
             onClick={toggle}
             aria-label={theme === "dark" ? t("common.light") : t("common.dark")}
             title={theme === "dark" ? t("common.light") : t("common.dark")}
           >
             {theme === "dark" ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className="transition-transform duration-200 group-hover:scale-110">
+                <circle cx="12" cy="12" r="4" fill="currentColor" />
                 <path
-                  d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"
+                  d="M12 5V3M12 21v-2M16.95 7.05l1.41-1.41M5.64 18.36l1.41-1.41M19 12h2M3 12h2M16.95 16.95l1.41 1.41M5.64 5.64l1.41 1.41"
                   stroke="currentColor"
-                  strokeWidth="1.6"
-                />
-                <path
-                  d="M12 2v2.5M12 19.5V22M4.22 4.22l1.77 1.77M18.01 18.01l1.77 1.77M2 12h2.5M19.5 12H22M4.22 19.78l1.77-1.77M18.01 5.99l1.77-1.77"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
+                  strokeWidth="2"
                   strokeLinecap="round"
                 />
               </svg>
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className="transition-transform duration-200 group-hover:scale-110">
                 <path
-                  d="M21 14.5A8.5 8.5 0 0 1 9.5 3a7 7 0 1 0 11.5 11.5Z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
+                  d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1Z"
+                  fill="currentColor"
                 />
               </svg>
             )}
           </button>
         </div>
+
+        {/* Mobile Hamburger Menu */}
+        <button
+          type="button"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--app-header-foreground)] md:hidden"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Menu"
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
       </div>
+
+        {/* Mobile Menu Dropdown */}
+        {menuOpen && (
+          <div className="border-t border-[var(--app-header-border)] bg-[var(--app-header-background)] px-6 py-4 md:hidden">
+            <div className="flex items-center gap-4">
+              {/* Language Switcher */}
+              <fieldset className="flex h-9 items-center rounded-full bg-[var(--app-header-pill)] p-1">
+                <legend className="sr-only">{t("common.language")}</legend>
+                <label className="relative">
+                  <input
+                    type="radio"
+                    name="ui-lang-mobile"
+                    value="en"
+                    checked={language === "en"}
+                    onChange={() => setUiLanguage("en")}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={`relative inline-flex h-7 cursor-pointer select-none items-center rounded-full px-3 text-xs font-medium transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--app-claude-orange)]/40 ${
+                      language === "en"
+                        ? "bg-[var(--app-header-background)] text-[var(--app-header-foreground)] shadow-sm"
+                        : "text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+                    }`}
+                  >
+                    EN
+                  </span>
+                </label>
+                <label className="relative">
+                  <input
+                    type="radio"
+                    name="ui-lang-mobile"
+                    value="zh"
+                    checked={language === "zh"}
+                    onChange={() => setUiLanguage("zh")}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={`relative inline-flex h-7 cursor-pointer select-none items-center rounded-full px-3 text-xs font-medium transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--app-claude-orange)]/40 ${
+                      language === "zh"
+                        ? "bg-[var(--app-header-background)] text-[var(--app-header-foreground)] shadow-sm"
+                        : "text-[var(--app-header-muted)] hover:text-[var(--app-header-foreground)]"
+                    }`}
+                  >
+                    中文
+                  </span>
+                </label>
+              </fieldset>
+
+              {/* Theme Toggle */}
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-header-pill)] text-[var(--app-header-muted)]"
+                onClick={toggle}
+                aria-label={theme === "dark" ? t("common.light") : t("common.dark")}
+              >
+                {theme === "dark" ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <circle cx="12" cy="12" r="4" fill="currentColor" />
+                    <path
+                      d="M12 5V3M12 21v-2M16.95 7.05l1.41-1.41M5.64 18.36l1.41-1.41M19 12h2M3 12h2M16.95 16.95l1.41 1.41M5.64 5.64l1.41 1.41"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path
+                      d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                )}
+              </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
