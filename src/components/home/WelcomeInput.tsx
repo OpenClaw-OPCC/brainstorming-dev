@@ -1,9 +1,10 @@
 "use client";
 
-import { ChangeEvent, useState, useCallback } from "react";
+import { ChangeEvent, useEffect, useState, useCallback } from "react";
 import { Turnstile } from "@/components/common/Turnstile";
 
-const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
+const buildTimeTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
+const buildTimeTurnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null;
 
 interface WelcomeInputProps {
   value: string;
@@ -15,6 +16,38 @@ interface WelcomeInputProps {
 
 export function WelcomeInput({ value, placeholder, onChange, onStart, startLabel }: WelcomeInputProps) {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileEnabled, setTurnstileEnabled] = useState(buildTimeTurnstileEnabled);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(buildTimeTurnstileSiteKey);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadConfig = async () => {
+      try {
+        const response = await fetch("/api/config", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as unknown;
+        if (!data || typeof data !== "object") return;
+        const turnstile = (data as { turnstile?: unknown }).turnstile;
+        if (!turnstile || typeof turnstile !== "object") return;
+
+        const enabled = (turnstile as { enabled?: unknown }).enabled;
+        const siteKey = (turnstile as { siteKey?: unknown }).siteKey;
+
+        if (cancelled) return;
+        if (typeof enabled === "boolean") setTurnstileEnabled(enabled);
+        if (typeof siteKey === "string" || siteKey === null) setTurnstileSiteKey(siteKey);
+      } catch {
+        // Ignore config fetch errors; fallback to build-time env.
+      }
+    };
+
+    loadConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(event.target.value);
@@ -22,21 +55,31 @@ export function WelcomeInput({ value, placeholder, onChange, onStart, startLabel
 
   const handleVerify = useCallback((token: string) => {
     setTurnstileToken(token);
+    setTurnstileError(null);
   }, []);
 
   const handleExpire = useCallback(() => {
     setTurnstileToken(null);
   }, []);
 
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileError("Turnstile failed to load. Please disable content blockers and refresh.");
+  }, []);
+
   const handleStart = () => {
-    if (isTurnstileEnabled && turnstileToken) {
+    if (turnstileEnabled && turnstileToken) {
       onStart(turnstileToken);
-    } else if (!isTurnstileEnabled) {
+    } else if (!turnstileEnabled) {
       onStart("");
     }
   };
 
-  const isDisabled = !value.trim() || (isTurnstileEnabled && !turnstileToken);
+  const shouldShowTurnstile = turnstileEnabled;
+  const isTurnstileMisconfigured = turnstileEnabled && !turnstileSiteKey;
+  const isDisabled =
+    !value.trim() ||
+    (turnstileEnabled && (!turnstileToken || isTurnstileMisconfigured || Boolean(turnstileError)));
 
   return (
     <div className="flex w-full flex-col gap-3">
@@ -47,9 +90,25 @@ export function WelcomeInput({ value, placeholder, onChange, onStart, startLabel
         onChange={handleChange}
         maxLength={2000}
       />
-      {isTurnstileEnabled && (
-        <Turnstile onVerify={handleVerify} onExpire={handleExpire} />
-      )}
+      {shouldShowTurnstile ? (
+        turnstileSiteKey ? (
+          <Turnstile
+            siteKey={turnstileSiteKey}
+            onVerify={handleVerify}
+            onExpire={handleExpire}
+            onError={handleTurnstileError}
+          />
+        ) : (
+          <div className="rounded-[var(--corner-radius-medium)] border border-[var(--app-border-color)] bg-[var(--app-tertiary-background)] px-3 py-2 text-xs text-[var(--app-secondary-foreground)]">
+            Turnstile is enabled but the site key is missing. Set <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code>.
+          </div>
+        )
+      ) : null}
+      {turnstileError ? (
+        <div className="rounded-[var(--corner-radius-medium)] border border-[var(--app-border-color)] bg-[var(--app-tertiary-background)] px-3 py-2 text-xs text-[var(--app-secondary-foreground)]">
+          {turnstileError}
+        </div>
+      ) : null}
       <button
         className="inline-flex items-center justify-center rounded-[var(--corner-radius-medium)] bg-[var(--app-claude-orange)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={handleStart}

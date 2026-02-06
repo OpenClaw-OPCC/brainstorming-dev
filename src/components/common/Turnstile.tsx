@@ -7,6 +7,7 @@ const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 interface TurnstileProps {
+  siteKey: string;
   onVerify: (token: string) => void;
   onExpire?: () => void;
   onError?: () => void;
@@ -32,7 +33,7 @@ declare global {
   }
 }
 
-export function Turnstile({ onVerify, onExpire, onError }: TurnstileProps) {
+export function Turnstile({ siteKey, onVerify, onExpire, onError }: TurnstileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const { theme } = useTheme();
@@ -46,9 +47,9 @@ export function Turnstile({ onVerify, onExpire, onError }: TurnstileProps) {
       widgetIdRef.current = null;
     }
 
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     if (!siteKey) {
       console.error("Turnstile site key not configured");
+      onError?.();
       return;
     }
 
@@ -59,7 +60,7 @@ export function Turnstile({ onVerify, onExpire, onError }: TurnstileProps) {
       "error-callback": onError,
       theme: theme,
     });
-  }, [onVerify, onExpire, onError, theme]);
+  }, [onError, onExpire, onVerify, siteKey, theme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
