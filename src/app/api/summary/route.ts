@@ -2,43 +2,40 @@ import { getAnthropicClient, defaultModel } from "@/lib/anthropic";
 import { buildSummaryMarkdownPrompt, buildSummaryPrompt } from "@/lib/prompts";
 import { summaryToMarkdown } from "@/lib/markdown";
 import { createMockSummaryResponse } from "@/lib/mockBrainstorm";
-import { getCookieFromHeader, TURNSTILE_PASS_COOKIE_NAME, verifyTurnstilePass } from "@/lib/turnstilePass";
+import { enforceTurnstilePassCookie } from "@/lib/turnstileEnforcement";
+import { SummaryRequestSchema } from "./schema";
+import type { SummaryRequest } from "./schema";
 import type { Summary } from "@/types/summary";
 import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
 
-interface SummaryRequest {
-  sessionId: string;
-  language: "en" | "zh";
-  history: Array<{ question: string; answer: string | string[] | number | boolean }>;
-}
-
 export async function POST(request: Request) {
-  const body = (await request.json()) as SummaryRequest;
-  const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
-  const isProd = process.env.NODE_ENV === "production";
-  const shouldEnforceTurnstile = isTurnstileEnabled && Boolean(secretKey);
-
-  if (isTurnstileEnabled && !secretKey) {
-    if (isProd) {
-      console.error("[summary] Turnstile is enabled but TURNSTILE_SECRET_KEY is missing");
-      return Response.json({ error: "Turnstile is enabled but not configured" }, { status: 500 });
-    }
-    console.warn("[summary] TURNSTILE_SECRET_KEY not configured, skipping verification in development");
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (shouldEnforceTurnstile) {
-    const passValue = getCookieFromHeader(request.headers.get("cookie"), TURNSTILE_PASS_COOKIE_NAME);
-    const passResult = verifyTurnstilePass(passValue, secretKey as string);
-    if (!passResult.ok) {
-      return Response.json(
-        { error: "Verification expired. Please restart.", code: "TURNSTILE_EXPIRED" },
-        { status: 403 },
-      );
+  const parsed = SummaryRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[summary] validation failed", parsed.error.flatten());
     }
+    return Response.json(
+      {
+        error: "Validation failed",
+        ...(process.env.NODE_ENV !== "production" ? { details: parsed.error.flatten() } : {}),
+      },
+      { status: 400 },
+    );
   }
+
+  const body: SummaryRequest = parsed.data;
+
+  const turnstile = enforceTurnstilePassCookie(request, { logPrefix: "summary" });
+  if (!turnstile.ok) return turnstile.response;
 
   const isDev = process.env.NODE_ENV === "development";
   const debug = (...args: unknown[]) => {

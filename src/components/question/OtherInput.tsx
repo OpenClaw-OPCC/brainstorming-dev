@@ -1,5 +1,7 @@
 "use client";
 
+import { MAX_ANSWER_LENGTH } from "@/lib/apiLimits";
+
 interface OtherInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -13,7 +15,7 @@ export function OtherInput({ value, onChange, placeholder }: OtherInputProps) {
       placeholder={placeholder}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      maxLength={400}
+      maxLength={MAX_ANSWER_LENGTH}
     />
   );
 }

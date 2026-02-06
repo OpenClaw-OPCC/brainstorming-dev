@@ -2,27 +2,16 @@ import { getAnthropicClient, defaultModel } from "@/lib/anthropic";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { normalizeQuestionsPayload } from "@/lib/questions";
 import { createMockBrainstormStream } from "@/lib/mockBrainstorm";
+import { enforceTurnstilePassCookie } from "@/lib/turnstileEnforcement";
 import {
   buildPassSetCookieHeader,
-  getCookieFromHeader,
   issueTurnstilePass,
-  TURNSTILE_PASS_COOKIE_NAME,
-  verifyTurnstilePass,
 } from "@/lib/turnstilePass";
-import type { TemplateType } from "@/types/session";
+import { BrainstormRequestSchema } from "./schema";
+import type { BrainstormRequest } from "./schema";
 import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
-
-interface BrainstormRequest {
-  sessionId: string;
-  input?: string;
-  template?: string;
-  language: "en" | "zh";
-  history: Array<{ question: string; answer: string | string[] | number | boolean }>;
-  action: "start" | "answer" | "retry";
-  turnstileToken?: string;
-}
 
 function extractJsonFromText(text: string) {
   const fencedMatch = text.match(/```json\s*([\s\S]*?)```/i);
@@ -46,7 +35,11 @@ function stripJsonBlock(text: string) {
   return text.replace(/```json[\s\S]*?```/gi, "").trim();
 }
 
-function buildUserMessage(input: string | undefined, history: BrainstormRequest["history"], action: string) {
+function buildUserMessage(
+  input: string | undefined,
+  history: BrainstormRequest["history"],
+  action: BrainstormRequest["action"],
+) {
   const historyText = history
     .map((item, index) => `Q${index + 1}: ${item.question}\nA${index + 1}: ${item.answer}`)
     .join("\n");
@@ -69,9 +62,6 @@ function buildUserMessage(input: string | undefined, history: BrainstormRequest[
 
   return `Continue the brainstorming.\n\nPrevious Q/A:\n${historyText || "(none)"}${progressHint}`;
 }
-
-const MAX_INPUT_LENGTH = 2000;
-const MAX_ANSWER_LENGTH = 400;
 
 async function verifyTurnstileToken(token: string, secretKey: string): Promise<boolean> {
   try {
@@ -101,32 +91,40 @@ async function verifyTurnstileToken(token: string, secretKey: string): Promise<b
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as BrainstormRequest;
-
-  const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
-  const isProd = process.env.NODE_ENV === "production";
-  const shouldEnforceTurnstile = isTurnstileEnabled && Boolean(secretKey);
-
-  if (isTurnstileEnabled && !secretKey) {
-    if (isProd) {
-      console.error("[brainstorm] Turnstile is enabled but TURNSTILE_SECRET_KEY is missing");
-      return Response.json({ error: "Turnstile is enabled but not configured" }, { status: 500 });
-    }
-    console.warn("[brainstorm] TURNSTILE_SECRET_KEY not configured, skipping verification in development");
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  const parsed = BrainstormRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[brainstorm] validation failed", parsed.error.flatten());
+    }
+    return Response.json(
+      {
+        error: "Validation failed",
+        ...(process.env.NODE_ENV !== "production" ? { details: parsed.error.flatten() } : {}),
+      },
+      { status: 400 },
+    );
+  }
+
+  const body = parsed.data;
 
   // Enforce a short-lived pass for any non-start LLM calls, so attackers can't bypass Turnstile by calling answer/retry.
-  if (shouldEnforceTurnstile && body.action !== "start") {
-    const passValue = getCookieFromHeader(request.headers.get("cookie"), TURNSTILE_PASS_COOKIE_NAME);
-    const passResult = verifyTurnstilePass(passValue, secretKey as string);
-    if (!passResult.ok) {
-      return Response.json(
-        { error: "Verification expired. Please restart.", code: "TURNSTILE_EXPIRED" },
-        { status: 403 },
-      );
-    }
-  }
+  const turnstile = enforceTurnstilePassCookie(request, {
+    logPrefix: "brainstorm",
+    skipPass: body.action === "start",
+  });
+  if (!turnstile.ok) return turnstile.response;
+
+  const isTurnstileEnabled = turnstile.isTurnstileEnabled;
+  const secretKey = turnstile.secretKey;
+  const isProd = turnstile.isProd;
+  const shouldEnforceTurnstile = turnstile.shouldEnforceTurnstile;
 
   // Verify Turnstile token on start action (if enabled)
   if (isTurnstileEnabled && body.action === "start") {
@@ -139,24 +137,6 @@ export async function POST(request: Request) {
       if (!isValid) {
         return Response.json({ error: "Turnstile verification failed" }, { status: 403 });
       }
-    }
-  }
-
-  // Validate input length
-  if (body.input && body.input.length > MAX_INPUT_LENGTH) {
-    return new Response(
-      JSON.stringify({ error: `Input exceeds maximum length of ${MAX_INPUT_LENGTH} characters` }),
-      { status: 400 }
-    );
-  }
-
-  // Validate answer length in history
-  for (const item of body.history) {
-    if (typeof item.answer === "string" && item.answer.length > MAX_ANSWER_LENGTH) {
-      return new Response(
-        JSON.stringify({ error: `Answer exceeds maximum length of ${MAX_ANSWER_LENGTH} characters` }),
-        { status: 400 }
-      );
     }
   }
   const isDev = process.env.NODE_ENV === "development";
@@ -258,7 +238,7 @@ export async function POST(request: Request) {
       model: defaultModel,
       max_tokens: 800,
       temperature: 0.3,
-      system: buildSystemPrompt(body.language, body.template as TemplateType | undefined),
+      system: buildSystemPrompt(body.language, body.template),
       messages: [
         {
           role: "user",

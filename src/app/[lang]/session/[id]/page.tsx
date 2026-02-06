@@ -11,6 +11,8 @@ import { useSessionEngine } from "@/hooks/useSessionEngine";
 import type { Session } from "@/types/session";
 import { useHydrated } from "@/hooks/useHydrated";
 import type { Summary } from "@/types/summary";
+import { clampHistoryAnswer, clampHistoryQuestion } from "@/lib/apiClamp";
+import { MAX_HISTORY_ITEMS } from "@/lib/apiLimits";
 
 export default function SessionPage() {
   const params = useParams<{ id: string }>();
@@ -93,24 +95,28 @@ export default function SessionPage() {
     setFinishError(null);
 
     try {
+      const history = session.questionGroups
+        .flatMap((group) =>
+          group.questions.map((question) => {
+            const answer = session.answers.find((a) => a.questionId === question.id);
+            const value = answer?.customText
+              ? `${String(answer.value ?? "")} (${answer.customText})`
+              : String(answer?.value ?? "");
+            return {
+              question: clampHistoryQuestion(question.question),
+              answer: clampHistoryAnswer(value),
+            };
+          }),
+        )
+        .slice(-MAX_HISTORY_ITEMS);
+
       const response = await fetch("/api/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: session.id,
           language: session.language,
-          history: session.questionGroups.flatMap((group) =>
-            group.questions.map((question) => {
-              const answer = session.answers.find((a) => a.questionId === question.id);
-              const value = answer?.customText
-                ? `${answer.value} (${answer.customText})`
-                : answer?.value ?? "";
-              return {
-                question: question.question,
-                answer: value,
-              };
-            }),
-          ),
+          history,
         }),
       });
 

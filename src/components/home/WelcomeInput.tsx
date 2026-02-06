@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useState, useCallback } from "react";
 import { Turnstile } from "@/components/common/Turnstile";
+import { MAX_INPUT_LENGTH } from "@/lib/apiLimits";
 
 const buildTimeTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
 const buildTimeTurnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null;
@@ -88,7 +89,7 @@ export function WelcomeInput({ value, placeholder, onChange, onStart, startLabel
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
-        maxLength={2000}
+        maxLength={MAX_INPUT_LENGTH}
       />
       {shouldShowTurnstile ? (
         turnstileSiteKey ? (

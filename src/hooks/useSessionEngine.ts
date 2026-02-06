@@ -6,6 +6,19 @@ import type { Session } from "@/types/session";
 import { readSse, SsePayload } from "@/lib/sse";
 import { validateGroup } from "@/lib/validation";
 import { normalizeQuestionsPayload, normalizeQuestionGroup } from "@/lib/questions";
+import { clampHistoryAnswer, clampHistoryQuestion } from "@/lib/apiClamp";
+import { MAX_HISTORY_ITEMS } from "@/lib/apiLimits";
+import {
+  COMPLETION_PHRASES,
+  HARD_GROUP_LIMIT,
+  SOFT_GROUP_LIMIT,
+  buildGroupSignature,
+  findFirstIncompleteGroup,
+  getAnswersForGroup,
+  isConfirmationGroup,
+  sanitizeGuideText,
+  serializeAnswer,
+} from "@/lib/session-engine";
 
 interface UseSessionEngineOptions {
   session: Session;
@@ -16,96 +29,6 @@ interface UseSessionEngineOptions {
 interface QuestionsPayload {
   groupId: string;
   questions: Question[];
-}
-
-const COMPLETION_PHRASES = [
-  /可以开始实现/gi,
-  /准备结束/gi,
-  /结束头脑风暴/gi,
-  /已经收集足够/gi,
-  /可以开始/gi,
-  /ready to end/gi,
-  /end the brainstorming/gi,
-  /we have enough information/gi,
-  /you can start implementing/gi,
-];
-
-const CONFIRMATION_PATTERNS = [
-  /以上需求.*正确/gi,
-  /需求总结.*正确/gi,
-  /确认.*需求/gi,
-  /confirm.*requirements/gi,
-  /is the above.*correct/gi,
-  /summary.*correct/gi,
-];
-
-const SOFT_GROUP_LIMIT = 6;
-const HARD_GROUP_LIMIT = 10;
-
-function sanitizeGuideText(text: string) {
-  return COMPLETION_PHRASES.reduce((acc, pattern) => acc.replace(pattern, ""), text);
-}
-
-function findFirstIncompleteGroup(groups: QuestionGroup[], answers: Answer[]) {
-  for (let i = 0; i < groups.length; i += 1) {
-    const group = groups[i];
-    const result = validateGroup(group.questions, answers.filter((a) => group.questions.some((q) => q.id === a.questionId)));
-    if (!result.valid) return i;
-  }
-  return -1;
-}
-
-function getAnswersForGroup(group: QuestionGroup | null, answers: Answer[]) {
-  if (!group) return [];
-  const ids = new Set(group.questions.map((q) => q.id));
-  return answers.filter((a) => ids.has(a.questionId));
-}
-
-function serializeAnswer(question: Question, answer: Answer): string {
-  if (question.type === "multi" && Array.isArray(answer.value)) {
-    const base = answer.value.join(", ");
-    return answer.customText ? `${base} (${answer.customText})` : base;
-  }
-  if (typeof answer.value === "boolean") return answer.value ? "Yes" : "No";
-  const base = String(answer.value ?? "");
-  return answer.customText ? `${base} (${answer.customText})` : base;
-}
-
-function buildGroupSignature(questions: Question[]) {
-  return JSON.stringify(
-    questions.map((question) => ({
-      type: question.type,
-      title: question.title.trim().toLowerCase(),
-      question: question.question.trim().toLowerCase(),
-      options: (question.options ?? []).map((opt) => opt.label.trim().toLowerCase()),
-    })),
-  );
-}
-
-function isConfirmationQuestion(question: Question) {
-  const text = `${question.title} ${question.question}`.toLowerCase();
-  return CONFIRMATION_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-function answerIsYes(question: Question, answer: Answer | undefined) {
-  if (!answer) return false;
-  if (typeof answer.value === "boolean") return answer.value;
-  const raw = String(answer.value ?? "").toLowerCase();
-  if (["yes", "true", "是", "正确", "完全正确"].some((value) => raw.includes(value))) return true;
-  if (question.options) {
-    const option = question.options.find((opt) => opt.id === answer.value);
-    if (option) {
-      const label = option.label.toLowerCase();
-      if (["yes", "true", "是", "正确", "完全正确"].some((value) => label.includes(value))) return true;
-    }
-  }
-  return false;
-}
-
-function isConfirmationGroup(group: QuestionGroup, answers: Answer[]) {
-  const relevant = group.questions.filter((q) => isConfirmationQuestion(q));
-  if (relevant.length === 0) return false;
-  return relevant.every((question) => answerIsYes(question, answers.find((a) => a.questionId === question.id)));
 }
 
 export function useSessionEngine({ session, onSessionUpdate, enabled = true }: UseSessionEngineOptions) {
@@ -133,18 +56,21 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
   const buildHistoryPayload = useCallback(
     (sessionLike: Session, answersOverride?: Answer[]) => {
       const answers = answersOverride ?? sessionLike.answers;
-      return sessionLike.questionGroups
+      const items = sessionLike.questionGroups
         .flatMap((group) =>
           group.questions.map((question) => {
             const answer = answers.find((a) => a.questionId === question.id);
             if (!answer) return null;
             return {
-              question: question.question,
-              answer: serializeAnswer(question, answer),
+              question: clampHistoryQuestion(question.question),
+              answer: clampHistoryAnswer(serializeAnswer(question, answer)),
             };
           }),
         )
         .filter(Boolean) as Array<{ question: string; answer: string | string[] | number | boolean }>;
+
+      if (items.length <= MAX_HISTORY_ITEMS) return items;
+      return items.slice(-MAX_HISTORY_ITEMS);
     },
     [],
   );
