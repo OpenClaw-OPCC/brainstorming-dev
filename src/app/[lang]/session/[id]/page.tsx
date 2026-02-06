@@ -10,6 +10,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSessionEngine } from "@/hooks/useSessionEngine";
 import type { Session } from "@/types/session";
 import { useHydrated } from "@/hooks/useHydrated";
+import type { Summary } from "@/types/summary";
 
 export default function SessionPage() {
   const params = useParams<{ id: string }>();
@@ -131,11 +132,11 @@ export default function SessionPage() {
         return;
       }
 
-      const data = (await response.json()) as { summary?: unknown; markdown?: unknown };
+      const data = (await response.json()) as { summary: Summary | null; markdown: string };
       const nextSession: Session = {
         ...session,
-        summary: data.summary,
-        summaryEdited: typeof data.markdown === "string" ? data.markdown : "",
+        summary: data.summary ?? undefined,
+        summaryEdited: data.markdown ?? "",
         status: "completed",
         updatedAt: new Date().toISOString(),
       };
