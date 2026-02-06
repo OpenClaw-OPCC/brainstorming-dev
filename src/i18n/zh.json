@@ -83,6 +83,7 @@
     "parse_failed": "解析 AI 输出失败",
     "stream_failed": "流式输出异常",
     "repeat_group": "重复问题已被跳过，正在重试",
+    "verification_expired": "验证已过期，请返回首页重新开始",
     "api_limit_title": "API 额度用尽",
     "api_limit_description": "公共 API 额度有限，可能已用尽。你可以克隆项目使用自己的 API Key。",
     "api_limit_steps": "使用步骤：",

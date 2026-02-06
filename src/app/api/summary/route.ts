@@ -2,6 +2,7 @@ import { getAnthropicClient, defaultModel } from "@/lib/anthropic";
 import { buildSummaryMarkdownPrompt, buildSummaryPrompt } from "@/lib/prompts";
 import { summaryToMarkdown } from "@/lib/markdown";
 import { createMockSummaryResponse } from "@/lib/mockBrainstorm";
+import { getCookieFromHeader, TURNSTILE_PASS_COOKIE_NAME, verifyTurnstilePass } from "@/lib/turnstilePass";
 import type { Summary } from "@/types/summary";
 import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 
@@ -15,6 +16,30 @@ interface SummaryRequest {
 
 export async function POST(request: Request) {
   const body = (await request.json()) as SummaryRequest;
+  const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  const isProd = process.env.NODE_ENV === "production";
+  const shouldEnforceTurnstile = isTurnstileEnabled && Boolean(secretKey);
+
+  if (isTurnstileEnabled && !secretKey) {
+    if (isProd) {
+      console.error("[summary] Turnstile is enabled but TURNSTILE_SECRET_KEY is missing");
+      return Response.json({ error: "Turnstile is enabled but not configured" }, { status: 500 });
+    }
+    console.warn("[summary] TURNSTILE_SECRET_KEY not configured, skipping verification in development");
+  }
+
+  if (shouldEnforceTurnstile) {
+    const passValue = getCookieFromHeader(request.headers.get("cookie"), TURNSTILE_PASS_COOKIE_NAME);
+    const passResult = verifyTurnstilePass(passValue, secretKey as string);
+    if (!passResult.ok) {
+      return Response.json(
+        { error: "Verification expired. Please restart.", code: "TURNSTILE_EXPIRED" },
+        { status: 403 },
+      );
+    }
+  }
+
   const isDev = process.env.NODE_ENV === "development";
   const debug = (...args: unknown[]) => {
     if (isDev) {

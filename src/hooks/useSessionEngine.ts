@@ -284,6 +284,21 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
         });
 
         if (!response.ok) {
+          if (response.status === 403) {
+            try {
+              const data = (await response.json()) as unknown;
+              const code =
+                data && typeof data === "object" ? (data as { code?: unknown }).code : null;
+              if (code === "TURNSTILE_EXPIRED") {
+                setError("errors.verification_expired");
+                setShowRetry(false);
+                return;
+              }
+            } catch {
+              // ignore
+            }
+          }
+
           setError("errors.fetch_failed");
           setShowRetry(true);
           return;

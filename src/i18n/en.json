@@ -83,6 +83,7 @@
     "parse_failed": "Failed to parse AI output",
     "stream_failed": "Streaming error",
     "repeat_group": "Same question group returned. Retrying...",
+    "verification_expired": "Verification expired. Please restart.",
     "api_limit_title": "API Limit Reached",
     "api_limit_description": "The public API quota is limited and may be exhausted. You can clone the project and use your own API key.",
     "api_limit_steps": "Steps to run locally:",

@@ -2,6 +2,13 @@ import { getAnthropicClient, defaultModel } from "@/lib/anthropic";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { normalizeQuestionsPayload } from "@/lib/questions";
 import { createMockBrainstormStream } from "@/lib/mockBrainstorm";
+import {
+  buildPassSetCookieHeader,
+  getCookieFromHeader,
+  issueTurnstilePass,
+  TURNSTILE_PASS_COOKIE_NAME,
+  verifyTurnstilePass,
+} from "@/lib/turnstilePass";
 import type { TemplateType } from "@/types/session";
 import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
 
@@ -96,35 +103,41 @@ async function verifyTurnstileToken(token: string, secretKey: string): Promise<b
 export async function POST(request: Request) {
   const body = (await request.json()) as BrainstormRequest;
 
-  // Verify Turnstile token on start action (if enabled)
   const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
-  if (isTurnstileEnabled && body.action === "start") {
-    const secretKey = process.env.TURNSTILE_SECRET_KEY;
-    if (!secretKey) {
-      if (process.env.NODE_ENV === "production") {
-        console.error("[brainstorm] Turnstile is enabled but TURNSTILE_SECRET_KEY is missing");
-        return new Response(
-          JSON.stringify({ error: "Turnstile is enabled but not configured" }),
-          { status: 500 },
-        );
-      }
-      console.warn("[brainstorm] TURNSTILE_SECRET_KEY not configured, skipping verification in development");
-    }
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  const isProd = process.env.NODE_ENV === "production";
+  const shouldEnforceTurnstile = isTurnstileEnabled && Boolean(secretKey);
 
-    if (!body.turnstileToken) {
-      return new Response(
-        JSON.stringify({ error: "Turnstile verification required" }),
-        { status: 403 }
+  if (isTurnstileEnabled && !secretKey) {
+    if (isProd) {
+      console.error("[brainstorm] Turnstile is enabled but TURNSTILE_SECRET_KEY is missing");
+      return Response.json({ error: "Turnstile is enabled but not configured" }, { status: 500 });
+    }
+    console.warn("[brainstorm] TURNSTILE_SECRET_KEY not configured, skipping verification in development");
+  }
+
+  // Enforce a short-lived pass for any non-start LLM calls, so attackers can't bypass Turnstile by calling answer/retry.
+  if (shouldEnforceTurnstile && body.action !== "start") {
+    const passValue = getCookieFromHeader(request.headers.get("cookie"), TURNSTILE_PASS_COOKIE_NAME);
+    const passResult = verifyTurnstilePass(passValue, secretKey as string);
+    if (!passResult.ok) {
+      return Response.json(
+        { error: "Verification expired. Please restart.", code: "TURNSTILE_EXPIRED" },
+        { status: 403 },
       );
+    }
+  }
+
+  // Verify Turnstile token on start action (if enabled)
+  if (isTurnstileEnabled && body.action === "start") {
+    if (!body.turnstileToken) {
+      return Response.json({ error: "Turnstile verification required" }, { status: 403 });
     }
 
     if (secretKey) {
       const isValid = await verifyTurnstileToken(body.turnstileToken, secretKey);
       if (!isValid) {
-        return new Response(
-          JSON.stringify({ error: "Turnstile verification failed" }),
-          { status: 403 }
-        );
+        return Response.json({ error: "Turnstile verification failed" }, { status: 403 });
       }
     }
   }
@@ -162,19 +175,24 @@ export async function POST(request: Request) {
     baseURL: process.env.ANTHROPIC_BASE_URL || "default",
   });
 
+  const setPassCookie =
+    shouldEnforceTurnstile && body.action === "start"
+      ? buildPassSetCookieHeader(issueTurnstilePass(secretKey as string), isProd)
+      : null;
+
   if (process.env.MOCK_BRAINSTORM === "1") {
     const stream = createMockBrainstormStream({
       input: body.input,
       language: body.language,
       historyCount: body.history.length,
     });
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
+    const headers = new Headers({
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
     });
+    if (setPassCookie) headers.append("Set-Cookie", setPassCookie);
+    return new Response(stream, { headers });
   }
 
   const client = getAnthropicClient();
@@ -392,11 +410,12 @@ export async function POST(request: Request) {
     },
   });
 
-  return new Response(responseStream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
+  const headers = new Headers({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
   });
+  if (setPassCookie) headers.append("Set-Cookie", setPassCookie);
+
+  return new Response(responseStream, { headers });
 }

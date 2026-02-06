@@ -17,6 +17,7 @@ export default function SessionPage() {
   const { t, withLang } = useI18n();
   const { getSession, updateSession, ready } = useLocalStorage();
   const [isFinishing, setIsFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const hydrated = useHydrated();
 
   const session = useMemo(() => {
@@ -58,8 +59,11 @@ export default function SessionPage() {
 
   const [showApiErrorModal, setShowApiErrorModal] = useState(false);
 
+  const combinedError = finishError ?? error;
+
   // Show API error modal when fetch fails or stream fails
-  const isApiError = error === "errors.fetch_failed" || error === "errors.stream_failed";
+  const isApiError = combinedError === "errors.fetch_failed" || combinedError === "errors.stream_failed";
+  const isVerificationExpired = combinedError === "errors.verification_expired";
 
   if (!hydrated) {
     return (
@@ -85,51 +89,82 @@ export default function SessionPage() {
 
   const handleFinish = async () => {
     setIsFinishing(true);
-    const response = await fetch("/api/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: session.id,
-        language: session.language,
-        history: session.questionGroups.flatMap((group) =>
-          group.questions.map((question) => {
-            const answer = session.answers.find((a) => a.questionId === question.id);
-            const value = answer?.customText
-              ? `${answer.value} (${answer.customText})`
-              : answer?.value ?? "";
-            return {
-              question: question.question,
-              answer: value,
-            };
-          }),
-        ),
-      }),
-    });
+    setFinishError(null);
 
-    const data = await response.json();
-    const nextSession: Session = {
-      ...session,
-      summary: data.summary,
-      summaryEdited: data.markdown,
-      status: "completed",
-      updatedAt: new Date().toISOString(),
-    };
-    updateSession(nextSession);
-    setIsFinishing(false);
-    router.push(withLang(`/summary/${session.id}`));
+    try {
+      const response = await fetch("/api/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: session.id,
+          language: session.language,
+          history: session.questionGroups.flatMap((group) =>
+            group.questions.map((question) => {
+              const answer = session.answers.find((a) => a.questionId === question.id);
+              const value = answer?.customText
+                ? `${answer.value} (${answer.customText})`
+                : answer?.value ?? "";
+              return {
+                question: question.question,
+                answer: value,
+              };
+            }),
+          ),
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          try {
+            const data = (await response.json()) as unknown;
+            const code = data && typeof data === "object" ? (data as { code?: unknown }).code : null;
+            if (code === "TURNSTILE_EXPIRED") {
+              setFinishError("errors.verification_expired");
+              return;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        setFinishError("errors.fetch_failed");
+        return;
+      }
+
+      const data = (await response.json()) as { summary?: unknown; markdown?: unknown };
+      const nextSession: Session = {
+        ...session,
+        summary: data.summary,
+        summaryEdited: typeof data.markdown === "string" ? data.markdown : "",
+        status: "completed",
+        updatedAt: new Date().toISOString(),
+      };
+      updateSession(nextSession);
+      router.push(withLang(`/summary/${session.id}`));
+    } finally {
+      setIsFinishing(false);
+    }
   };
 
-  const errorMessage = error?.startsWith("errors.") ? t(error) : error;
+  const errorMessage = combinedError?.startsWith("errors.") ? t(combinedError) : combinedError;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
       <GuideText text={guideText} isLoading={isLoading} />
 
-      {error ? (
+      {combinedError ? (
         <div className="rounded-[var(--corner-radius-medium)] border border-[var(--app-border-color)] bg-red-500/10 p-3 text-xs text-red-400">
           <div className="flex items-center justify-between">
             <span>{errorMessage}</span>
             <div className="flex gap-2">
+              {isVerificationExpired ? (
+                <button
+                  onClick={() => router.push(withLang("/"))}
+                  className="text-[var(--app-claude-orange)] hover:underline"
+                >
+                  {t("common.go_home")}
+                </button>
+              ) : null}
               {isApiError ? (
                 <button
                   onClick={() => setShowApiErrorModal(true)}
@@ -138,7 +173,7 @@ export default function SessionPage() {
                   {t("errors.api_limit_title")}
                 </button>
               ) : null}
-              {showRetry ? (
+              {showRetry && !isVerificationExpired ? (
                 <button
                   onClick={retry}
                   className="text-[var(--app-claude-orange)] hover:underline"
