@@ -7,6 +7,7 @@ import { MarkdownPreview } from "@/components/summary/MarkdownPreview";
 import { VerificationModal } from "@/components/common/VerificationModal";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useI18n } from "@/hooks/useI18n";
+import { useLeaveConfirmation } from "@/hooks/useLeaveConfirmation";
 import { summaryToMarkdown } from "@/lib/markdown";
 import { useHydrated } from "@/hooks/useHydrated";
 import { buildSessionHistory } from "@/lib/sessionHistory";
@@ -35,6 +36,9 @@ export default function SummaryPage() {
   const hasTriggeredRef = useRef(false);
   const turnstileTokenRef = useRef<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+
+  const leaveConfirmEnabled = Boolean(session) && (isGenerating || markdown !== baseMarkdown);
+  useLeaveConfirmation({ enabled: leaveConfirmEnabled, message: t("leave.confirm") });
 
   useEffect(() => {
     if (!session) return;

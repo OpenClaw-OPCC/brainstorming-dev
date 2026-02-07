@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import en from "@/i18n/en.json";
 import zh from "@/i18n/zh.json";
+import { confirmLeaveIfNeeded } from "@/lib/leaveConfirmState";
 
 export type UiLanguage = "en" | "zh";
 
@@ -61,6 +62,8 @@ export function useI18n() {
   };
 
   const setLanguage = (next: UiLanguage) => {
+    if (next === language) return;
+    if (!confirmLeaveIfNeeded()) return;
     if (typeof document !== "undefined") {
       document.cookie = `ui_lang=${next}; path=/; max-age=31536000`;
     }

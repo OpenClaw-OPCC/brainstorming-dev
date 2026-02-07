@@ -72,6 +72,9 @@
     "not_found": "未找到会话。",
     "go_home": "返回首页"
   },
+  "leave": {
+    "confirm": "当前流程进行中，离开页面可能会中断。确定离开吗？"
+  },
   "header": {
     "brand": "Brainstorming",
     "nav": {

@@ -8,6 +8,7 @@ import { ApiErrorModal } from "@/components/common/ApiErrorModal";
 import { VerificationModal } from "@/components/common/VerificationModal";
 import { useI18n } from "@/hooks/useI18n";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useLeaveConfirmation } from "@/hooks/useLeaveConfirmation";
 import { useSessionEngine } from "@/hooks/useSessionEngine";
 import type { Session } from "@/types/session";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -25,6 +26,8 @@ export default function SessionPage() {
     if (!ready) return undefined;
     return getSession(params.id);
   }, [getSession, params.id, ready]);
+
+  useLeaveConfirmation({ enabled: Boolean(session), message: t("leave.confirm") });
 
   const fallbackSession: Session = {
     id: params.id,

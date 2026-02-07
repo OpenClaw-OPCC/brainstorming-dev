@@ -72,6 +72,9 @@
     "not_found": "Session not found.",
     "go_home": "Go Home"
   },
+  "leave": {
+    "confirm": "You have an in-progress session. Leave this page anyway?"
+  },
   "header": {
     "brand": "Brainstorming",
     "nav": {
