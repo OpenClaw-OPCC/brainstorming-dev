@@ -88,3 +88,40 @@ input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--app-claude-orange);
 }
+
+@keyframes oc-question-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.oc-question-enter {
+  animation: oc-question-enter 180ms ease-out;
+}
+
+@keyframes oc-tab-attention {
+  0% {
+    background-color: color-mix(in srgb, var(--app-claude-orange) 22%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-claude-orange) 0%, transparent);
+  }
+  45% {
+    background-color: color-mix(in srgb, var(--app-claude-orange) 14%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-claude-orange) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-claude-orange) 0%, transparent);
+  }
+}
+
+.oc-tab-attention {
+  border-radius: var(--corner-radius-small);
+  padding: 2px 4px;
+  margin: -2px -4px;
+  animation: oc-tab-attention 700ms ease-out;
+}
