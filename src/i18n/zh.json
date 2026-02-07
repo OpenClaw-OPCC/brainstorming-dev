@@ -22,7 +22,7 @@
   "summary": {
     "title": "需求总结",
     "generating_title": "正在生成总结…",
-    "generating_hint": "通常需要 10–30 秒，请不要关闭页面。",
+    "generating_hint": "通常需要 1–2 分钟，请不要关闭页面。",
     "back_to_questions": "返回修改问题",
     "retry": "重试",
     "editor": "Markdown",
