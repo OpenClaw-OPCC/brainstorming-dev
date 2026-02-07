@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   const parsed = SummaryRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV !== "test") {
       console.warn("[summary] validation failed", parsed.error.flatten());
     }
     return Response.json(

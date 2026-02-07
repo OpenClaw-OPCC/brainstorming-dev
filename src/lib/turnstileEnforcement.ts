@@ -43,6 +43,9 @@ export function enforceTurnstilePassCookie(
     const passValue = getCookieFromHeader(request.headers.get("cookie"), TURNSTILE_PASS_COOKIE_NAME);
     const passResult = verifyTurnstilePass(passValue, secretKey as string);
     if (!passResult.ok) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn(`[${options.logPrefix}] Turnstile pass cookie rejected`, { reason: passResult.reason });
+      }
       return {
         ok: false,
         response: Response.json(
@@ -61,4 +64,3 @@ export function enforceTurnstilePassCookie(
     isProd,
   };
 }
-

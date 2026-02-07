@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
   const parsed = BrainstormRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV !== "test") {
       console.warn("[brainstorm] validation failed", parsed.error.flatten());
     }
     return Response.json(
@@ -129,6 +129,12 @@ export async function POST(request: Request) {
   // Verify Turnstile token on start action (if enabled)
   if (isTurnstileEnabled && body.action === "start") {
     if (!body.turnstileToken) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn("[brainstorm] Turnstile token missing for start", {
+          sessionId: body.sessionId,
+          language: body.language,
+        });
+      }
       return Response.json({ error: "Turnstile verification required" }, { status: 403 });
     }
 
@@ -364,6 +370,18 @@ export async function POST(request: Request) {
       }),
       { status: 500 },
     );
+  }
+
+  if (!questions && !end && process.env.NODE_ENV !== "test") {
+    console.error("[brainstorm] Failed to parse tool output", {
+      sessionId: body.sessionId,
+      action: body.action,
+      language: body.language,
+      historyCount: body.history.length,
+      model: defaultModel,
+      baseURL: process.env.ANTHROPIC_BASE_URL || "default",
+      textLength: text.length,
+    });
   }
 
   const responseStream = new ReadableStream({
