@@ -66,9 +66,28 @@ Open [http://localhost:3000](http://localhost:3000) to start brainstorming.
 ## Environment Variables
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-xxx              # Required: Your API Key
+ANTHROPIC_API_KEY=sk-ant-xxx                  # Required: Your API Key
 ANTHROPIC_BASE_URL=https://api.anthropic.com  # Optional: API base URL
-ANTHROPIC_MODEL=claude-sonnet-4-20250514  # Optional: Model name
+ANTHROPIC_MODEL=claude-sonnet-4-20250514      # Optional: Model name
+```
+
+### Turnstile (anti-abuse)
+
+Turnstile is **disabled by default** for local development.
+
+Enable it (recommended for production):
+
+```bash
+NEXT_PUBLIC_ENABLE_TURNSTILE=true
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=...
+TURNSTILE_SECRET_KEY=...
+```
+
+Escape hatch (force-disable even if the above is set):
+
+```bash
+TURNSTILE_DISABLED=1
+# alias: DISABLE_TURNSTILE=1
 ```
 
 **Supports any Anthropic-compatible API.** For cost savings, try:

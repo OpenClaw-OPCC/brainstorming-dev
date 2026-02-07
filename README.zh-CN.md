@@ -66,9 +66,28 @@ pnpm dev
 ## 环境变量
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-xxx              # 必填：你的 API Key
+ANTHROPIC_API_KEY=sk-ant-xxx                  # 必填：你的 API Key
 ANTHROPIC_BASE_URL=https://api.anthropic.com  # 可选：API 地址
-ANTHROPIC_MODEL=claude-sonnet-4-20250514  # 可选：模型名称
+ANTHROPIC_MODEL=claude-sonnet-4-20250514      # 可选：模型名称
+```
+
+### Turnstile（反滥用验证）
+
+本地开发默认 **关闭 Turnstile**，避免第一次跑不起来。
+
+开启方式（生产环境建议开启）：
+
+```bash
+NEXT_PUBLIC_ENABLE_TURNSTILE=true
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=...
+TURNSTILE_SECRET_KEY=...
+```
+
+逃生阀（即使上面配了，也可以强制关闭）：
+
+```bash
+TURNSTILE_DISABLED=1
+# 兼容别名：DISABLE_TURNSTILE=1
 ```
 
 **支持所有兼容 Anthropic 协议的 API。** 如果想省钱，推荐使用：
