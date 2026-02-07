@@ -21,6 +21,10 @@
   },
   "summary": {
     "title": "需求总结",
+    "generating_title": "正在生成总结…",
+    "generating_hint": "通常需要 10–30 秒，请不要关闭页面。",
+    "back_to_questions": "返回修改问题",
+    "retry": "重试",
     "editor": "Markdown",
     "preview": "预览",
     "copy": "复制 Markdown",
@@ -80,6 +84,7 @@
   },
   "errors": {
     "fetch_failed": "获取问题失败",
+    "summary_failed": "生成总结失败",
     "no_questions": "未返回问题",
     "parse_failed": "解析 AI 输出失败",
     "stream_failed": "流式输出异常",

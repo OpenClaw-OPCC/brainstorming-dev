@@ -10,9 +10,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSessionEngine } from "@/hooks/useSessionEngine";
 import type { Session } from "@/types/session";
 import { useHydrated } from "@/hooks/useHydrated";
-import type { Summary } from "@/types/summary";
-import { clampHistoryAnswer, clampHistoryQuestion } from "@/lib/apiClamp";
-import { MAX_HISTORY_ITEMS } from "@/lib/apiLimits";
+// Summary generation now happens on the summary page.
 
 export default function SessionPage() {
   const params = useParams<{ id: string }>();
@@ -20,7 +18,6 @@ export default function SessionPage() {
   const { t, withLang } = useI18n();
   const { getSession, updateSession, ready } = useLocalStorage();
   const [isFinishing, setIsFinishing] = useState(false);
-  const [finishError, setFinishError] = useState<string | null>(null);
   const hydrated = useHydrated();
 
   const session = useMemo(() => {
@@ -62,7 +59,7 @@ export default function SessionPage() {
 
   const [showApiErrorModal, setShowApiErrorModal] = useState(false);
 
-  const combinedError = finishError ?? error;
+  const combinedError = error;
 
   // Show API error modal when fetch fails or stream fails
   const isApiError = combinedError === "errors.fetch_failed" || combinedError === "errors.stream_failed";
@@ -90,67 +87,11 @@ export default function SessionPage() {
     );
   }
 
-  const handleFinish = async () => {
+  const handleFinish = () => {
+    // Navigate immediately and generate the report on the summary page.
+    // This avoids the "disabled button with no feedback" experience.
     setIsFinishing(true);
-    setFinishError(null);
-
-    try {
-      const history = session.questionGroups
-        .flatMap((group) =>
-          group.questions.map((question) => {
-            const answer = session.answers.find((a) => a.questionId === question.id);
-            const value = answer?.customText
-              ? `${String(answer.value ?? "")} (${answer.customText})`
-              : String(answer?.value ?? "");
-            return {
-              question: clampHistoryQuestion(question.question),
-              answer: clampHistoryAnswer(value),
-            };
-          }),
-        )
-        .slice(-MAX_HISTORY_ITEMS);
-
-      const response = await fetch("/api/summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: session.id,
-          language: session.language,
-          history,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          try {
-            const data = (await response.json()) as unknown;
-            const code = data && typeof data === "object" ? (data as { code?: unknown }).code : null;
-            if (code === "TURNSTILE_EXPIRED") {
-              setFinishError("errors.verification_expired");
-              return;
-            }
-          } catch {
-            // ignore
-          }
-        }
-
-        setFinishError("errors.fetch_failed");
-        return;
-      }
-
-      const data = (await response.json()) as { summary: Summary | null; markdown: string };
-      const nextSession: Session = {
-        ...session,
-        summary: data.summary ?? undefined,
-        summaryEdited: data.markdown ?? "",
-        status: "completed",
-        updatedAt: new Date().toISOString(),
-      };
-      updateSession(nextSession);
-      router.push(withLang(`/summary/${session.id}`));
-    } finally {
-      setIsFinishing(false);
-    }
+    router.push(withLang(`/summary/${session.id}`));
   };
 
   const errorMessage = combinedError?.startsWith("errors.") ? t(combinedError) : combinedError;
