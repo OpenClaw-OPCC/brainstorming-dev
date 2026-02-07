@@ -121,13 +121,14 @@ export async function POST(request: Request) {
   });
   if (!turnstile.ok) return turnstile.response;
 
-  const isTurnstileEnabled = turnstile.isTurnstileEnabled;
   const secretKey = turnstile.secretKey;
   const isProd = turnstile.isProd;
   const shouldEnforceTurnstile = turnstile.shouldEnforceTurnstile;
 
-  // Verify Turnstile token on start action (if enabled)
-  if (isTurnstileEnabled && body.action === "start") {
+  // Verify Turnstile token on start action (only when enforcement is active)
+  // NOTE: In development/test environments, TURNSTILE_SECRET_KEY may be missing.
+  // In that case we should not block requests by requiring a token.
+  if (shouldEnforceTurnstile && body.action === "start") {
     if (!body.turnstileToken) {
       if (process.env.NODE_ENV !== "test") {
         console.warn("[brainstorm] Turnstile token missing for start", {
@@ -138,11 +139,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Turnstile verification required" }, { status: 403 });
     }
 
-    if (secretKey) {
-      const isValid = await verifyTurnstileToken(body.turnstileToken, secretKey);
-      if (!isValid) {
-        return Response.json({ error: "Turnstile verification failed" }, { status: 403 });
-      }
+    const isValid = await verifyTurnstileToken(body.turnstileToken, secretKey as string);
+    if (!isValid) {
+      return Response.json({ error: "Turnstile verification failed" }, { status: 403 });
     }
   }
   const isDev = process.env.NODE_ENV === "development";

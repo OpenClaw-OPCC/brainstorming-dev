@@ -43,6 +43,12 @@ export default async function globalSetup() {
   process.env.E2E_BASE_URL = baseUrl;
   process.env.MOCK_BRAINSTORM = "1";
 
+  // For E2E runs we disable Turnstile by default so local/dev environments don't
+  // require a browser-verified token.
+  if (process.env.E2E_DISABLE_TURNSTILE !== "0") {
+    process.env.TURNSTILE_DISABLED = "1";
+  }
+
   const child = spawn(
     "pnpm",
     ["exec", "next", "dev", "-H", "127.0.0.1", "-p", String(port)],
@@ -53,6 +59,7 @@ export default async function globalSetup() {
         NODE_ENV: "development",
         NEXT_TELEMETRY_DISABLED: "1",
         MOCK_BRAINSTORM: "1",
+        TURNSTILE_DISABLED: process.env.TURNSTILE_DISABLED,
       },
     },
   );

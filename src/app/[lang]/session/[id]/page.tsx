@@ -91,6 +91,10 @@ export default function SessionPage() {
     // Navigate immediately and generate the report on the summary page.
     // This avoids the "disabled button with no feedback" experience.
     setIsFinishing(true);
+
+    // Safety fallback: if navigation fails for any reason, re-enable the button.
+    setTimeout(() => setIsFinishing(false), 5000);
+
     router.push(withLang(`/summary/${session.id}`));
   };
 
