@@ -41,12 +41,21 @@ export default async function globalSetup() {
 
   // Make tests pick up the URL dynamically.
   process.env.E2E_BASE_URL = baseUrl;
-  process.env.MOCK_BRAINSTORM = "1";
+
+  // Default to mock mode for E2E, but allow workflows to override (e.g. Live E2E).
+  if (!process.env.MOCK_BRAINSTORM) {
+    process.env.MOCK_BRAINSTORM = "1";
+  }
 
   // For E2E runs we disable Turnstile by default so local/dev environments don't
   // require a browser-verified token.
   if (process.env.E2E_DISABLE_TURNSTILE !== "0") {
     process.env.TURNSTILE_DISABLED = "1";
+
+    // Also disable the widget in the UI by default.
+    if (!process.env.NEXT_PUBLIC_ENABLE_TURNSTILE) {
+      process.env.NEXT_PUBLIC_ENABLE_TURNSTILE = "false";
+    }
   }
 
   const child = spawn(
@@ -58,8 +67,9 @@ export default async function globalSetup() {
         ...process.env,
         NODE_ENV: "development",
         NEXT_TELEMETRY_DISABLED: "1",
-        MOCK_BRAINSTORM: "1",
+        MOCK_BRAINSTORM: process.env.MOCK_BRAINSTORM,
         TURNSTILE_DISABLED: process.env.TURNSTILE_DISABLED,
+        NEXT_PUBLIC_ENABLE_TURNSTILE: process.env.NEXT_PUBLIC_ENABLE_TURNSTILE,
       },
     },
   );
