@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import SummaryPage from "@/app/[lang]/summary/[id]/page";
+import SessionPage from "@/app/[lang]/session/[id]/page";
 
 export default async function Page({
   params,
@@ -14,8 +14,9 @@ export default async function Page({
   const prefersZh = cookieLang ? cookieLang === "zh" : acceptLang.toLowerCase().includes("zh");
 
   if (prefersZh) {
-    redirect(`/zh/summary/${id}`);
+    redirect(`/zh/session/${id}`);
   }
 
-  return <SummaryPage />;
+  return <SessionPage />;
 }
+
