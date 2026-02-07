@@ -12,7 +12,7 @@ import { useLeaveConfirmation } from "@/hooks/useLeaveConfirmation";
 import { useSessionEngine } from "@/hooks/useSessionEngine";
 import type { Session } from "@/types/session";
 import { useHydrated } from "@/hooks/useHydrated";
-// Summary generation now happens on the summary page.
+// Summary generation now happens on summary page.
 
 export default function SessionPage() {
   const params = useParams<{ id: string }>();
@@ -94,12 +94,12 @@ export default function SessionPage() {
   }
 
   const handleFinish = () => {
-    // Navigate immediately and generate the report on the summary page.
-    // This avoids the "disabled button with no feedback" experience.
+    // Navigate immediately and generate report on summary page.
+    // This avoids "disabled button with no feedback" experience.
     setIsFinishing(true);
 
-    // Mark the session as completed (Q&A finished). The summary page will only generate
-    // when the session is completed, which prevents accidental summary generation when
+    // Mark session as completed (Q&A finished). The summary page will only generate
+    // when session is completed, which prevents accidental summary generation when
     // someone opens /summary/:id too early.
     updateSession({
       ...session,
@@ -107,7 +107,7 @@ export default function SessionPage() {
       updatedAt: new Date().toISOString(),
     });
 
-    // Safety fallback: if navigation fails for any reason, re-enable the button.
+    // Safety fallback: if navigation fails for any reason, re-enable button.
     setTimeout(() => setIsFinishing(false), 5000);
 
     router.push(withLang(`/summary/${session.id}`));
@@ -115,6 +115,15 @@ export default function SessionPage() {
 
   const handleVerified = async (token: string) => {
     setShowVerificationModal(false);
+    
+    // FIX: Update session with new turnstile token to prevent "verification expired" errors
+    // This ensures subsequent API calls use the latest valid token
+    updateSession({
+      ...session,
+      turnstileToken: token,
+      updatedAt: new Date().toISOString(),
+    });
+    
     await resumeAfterVerification(token);
   };
 
