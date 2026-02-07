@@ -18,7 +18,14 @@ export function enforceTurnstilePassCookie(
   request: Request,
   options: { logPrefix: string; skipPass?: boolean },
 ): TurnstileEnforcementResult {
-  const isTurnstileEnabled = process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
+  const isTurnstileExplicitlyDisabled =
+    process.env.TURNSTILE_DISABLED === "1" ||
+    process.env.TURNSTILE_DISABLED === "true" ||
+    process.env.DISABLE_TURNSTILE === "1" ||
+    process.env.DISABLE_TURNSTILE === "true";
+
+  const isTurnstileEnabled =
+    !isTurnstileExplicitlyDisabled && process.env.NEXT_PUBLIC_ENABLE_TURNSTILE !== "false";
   const secretKey = process.env.TURNSTILE_SECRET_KEY ?? null;
   const isProd = process.env.NODE_ENV === "production";
   const shouldEnforceTurnstile = isTurnstileEnabled && Boolean(secretKey);
