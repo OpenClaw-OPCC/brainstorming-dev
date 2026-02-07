@@ -92,6 +92,15 @@ export default function SessionPage() {
     // This avoids the "disabled button with no feedback" experience.
     setIsFinishing(true);
 
+    // Mark the session as completed (Q&A finished). The summary page will only generate
+    // when the session is completed, which prevents accidental summary generation when
+    // someone opens /summary/:id too early.
+    updateSession({
+      ...session,
+      status: "completed",
+      updatedAt: new Date().toISOString(),
+    });
+
     // Safety fallback: if navigation fails for any reason, re-enable the button.
     setTimeout(() => setIsFinishing(false), 5000);
 

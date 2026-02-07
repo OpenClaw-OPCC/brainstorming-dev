@@ -24,6 +24,8 @@
     "generating_title": "正在生成总结…",
     "generating_hint": "通常需要 1–2 分钟，请不要关闭页面。",
     "back_to_questions": "返回修改问题",
+    "not_ready_title": "请先完成问题回答再生成总结",
+    "not_ready_hint": "请返回问题页并点击「完成并生成总结」。",
     "retry": "重试",
     "editor": "Markdown",
     "preview": "预览",
