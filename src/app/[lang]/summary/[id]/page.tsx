@@ -46,8 +46,13 @@ export default function SummaryPage() {
     }
   }, [baseMarkdown]);
 
+  const canGenerate = session?.status === "completed";
+
   useEffect(() => {
     if (!session) return;
+
+    // Only generate when the user has explicitly finished the Q&A.
+    if (!canGenerate) return;
 
     // If we already have content, don't generate.
     const alreadyHasContent = Boolean(baseMarkdown && baseMarkdown.trim().length > 0);
@@ -123,7 +128,7 @@ export default function SummaryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [baseMarkdown, retryKey, session, updateSession]);
+  }, [baseMarkdown, canGenerate, retryKey, session, updateSession]);
 
   if (!hydrated) {
     return (
@@ -184,6 +189,25 @@ export default function SummaryPage() {
       ? t("errors.verification_expired")
       : t("errors.summary_failed")
     : t("summary.generating_title");
+
+  if (!canGenerate && baseMarkdown.trim().length === 0) {
+    return (
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-xl font-semibold">{t("summary.not_ready_title")}</h1>
+          <p className="text-sm text-[var(--app-secondary-foreground)]">{t("summary.not_ready_hint")}</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              className="rounded-[var(--corner-radius-small)] border border-[var(--app-border-color)] px-3 py-1 text-xs"
+              onClick={handleBackToQuestions}
+            >
+              {t("summary.back_to_questions")}
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (isGenerating || generateError) {
     return (

@@ -24,6 +24,8 @@
     "generating_title": "Generating summary…",
     "generating_hint": "This usually takes 1–2 minutes. Please keep this page open.",
     "back_to_questions": "Back to questions",
+    "not_ready_title": "Finish the questions to generate the summary",
+    "not_ready_hint": "Please return to the questions page and click \"Finish & Generate Summary\".",
     "retry": "Retry",
     "editor": "Markdown",
     "preview": "Preview",
