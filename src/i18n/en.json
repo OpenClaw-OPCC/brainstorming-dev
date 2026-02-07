@@ -21,6 +21,10 @@
   },
   "summary": {
     "title": "Requirements Summary",
+    "generating_title": "Generating summary…",
+    "generating_hint": "This usually takes 10–30 seconds. Please keep this page open.",
+    "back_to_questions": "Back to questions",
+    "retry": "Retry",
     "editor": "Markdown",
     "preview": "Preview",
     "copy": "Copy Markdown",
@@ -80,6 +84,7 @@
   },
   "errors": {
     "fetch_failed": "Failed to fetch questions",
+    "summary_failed": "Failed to generate summary",
     "no_questions": "No questions returned",
     "parse_failed": "Failed to parse AI output",
     "stream_failed": "Streaming error",
