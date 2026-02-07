@@ -27,7 +27,7 @@ export default function SessionPage() {
     return getSession(params.id);
   }, [getSession, params.id, ready]);
 
-  useLeaveConfirmation({ enabled: Boolean(session), message: t("leave.confirm") });
+  useLeaveConfirmation({ enabled: session?.status === "active", message: t("leave.confirm") });
 
   const fallbackSession: Session = {
     id: params.id,
