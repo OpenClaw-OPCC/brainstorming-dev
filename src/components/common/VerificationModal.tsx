@@ -69,6 +69,12 @@ export function VerificationModal({ isOpen, onClose, onVerified }: VerificationM
   }, [t]);
 
   const handleContinue = async () => {
+    // If Turnstile is disabled in this environment, there is nothing to verify.
+    // Close the modal to avoid a "click does nothing" dead-end.
+    if (!turnstileEnabled) {
+      onClose();
+      return;
+    }
     if (!turnstileToken) return;
     setIsSubmitting(true);
     try {
@@ -83,6 +89,7 @@ export function VerificationModal({ isOpen, onClose, onVerified }: VerificationM
   const isTurnstileMisconfigured = turnstileEnabled && !turnstileSiteKey;
   const isDisabled =
     isSubmitting ||
+    // When Turnstile is enabled, require a valid token before proceeding.
     (turnstileEnabled && (!turnstileToken || isTurnstileMisconfigured || Boolean(turnstileError)));
 
   return (
@@ -140,4 +147,3 @@ export function VerificationModal({ isOpen, onClose, onVerified }: VerificationM
     </div>
   );
 }
-
