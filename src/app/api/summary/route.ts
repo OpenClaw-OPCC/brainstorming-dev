@@ -34,8 +34,16 @@ export async function POST(request: Request) {
 
   const body: SummaryRequest = parsed.data;
 
-  const turnstile = enforceTurnstilePassCookie(request, { logPrefix: "summary" });
+  const turnstile = await enforceTurnstilePassCookie(request, {
+    logPrefix: "summary",
+    turnstileToken: body.turnstileToken,
+  });
   if (!turnstile.ok) return turnstile.response;
+
+  const responseInit: ResponseInit | undefined = turnstile.setPassCookieHeader
+    ? { headers: { "Set-Cookie": turnstile.setPassCookieHeader } }
+    : undefined;
+  const json = (data: unknown) => Response.json(data, responseInit);
 
   const isDev = process.env.NODE_ENV === "development";
   const debug = (...args: unknown[]) => {
@@ -45,7 +53,7 @@ export async function POST(request: Request) {
   };
 
   if (process.env.MOCK_BRAINSTORM === "1") {
-    return Response.json(createMockSummaryResponse(body.language));
+    return json(createMockSummaryResponse(body.language));
   }
 
   const client = getAnthropicClient();
@@ -134,7 +142,7 @@ export async function POST(request: Request) {
     debug("markdown_content", markdownContent);
 
     if (markdownContent.trim()) {
-      return Response.json({ summary: null, markdown: markdownContent });
+      return json({ summary: null, markdown: markdownContent });
     }
   } catch (err) {
     const e = err as Record<string, unknown>;
@@ -218,7 +226,7 @@ export async function POST(request: Request) {
     const summaryCandidate = (input.summary ?? toolBlock.input) as unknown;
     if (isSummary(summaryCandidate)) {
       const markdown = summaryToMarkdown(summaryCandidate);
-      return Response.json({ summary: summaryCandidate, markdown });
+      return json({ summary: summaryCandidate, markdown });
     }
   }
 
@@ -237,7 +245,7 @@ export async function POST(request: Request) {
           : parsed;
       if (isSummary(summaryCandidate)) {
         const markdown = summaryToMarkdown(summaryCandidate);
-        return Response.json({ summary: summaryCandidate, markdown });
+        return json({ summary: summaryCandidate, markdown });
       }
     } catch {
       // fall through
@@ -245,7 +253,7 @@ export async function POST(request: Request) {
   }
 
   if (text.trim()) {
-    return Response.json({ summary: null, markdown: text });
+    return json({ summary: null, markdown: text });
   }
 
   const fallbackMarkdown = [
@@ -255,5 +263,5 @@ export async function POST(request: Request) {
     ...body.history.map((item, index) => `- **Q${index + 1}:** ${item.question}\n  - ${item.answer}`),
   ].join("\n");
 
-  return Response.json({ summary: null, markdown: fallbackMarkdown });
+  return json({ summary: null, markdown: fallbackMarkdown });
 }

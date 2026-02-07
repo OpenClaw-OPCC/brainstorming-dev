@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MarkdownEditor } from "@/components/summary/MarkdownEditor";
 import { MarkdownPreview } from "@/components/summary/MarkdownPreview";
+import { VerificationModal } from "@/components/common/VerificationModal";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useI18n } from "@/hooks/useI18n";
 import { summaryToMarkdown } from "@/lib/markdown";
@@ -32,6 +33,8 @@ export default function SummaryPage() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const hasTriggeredRef = useRef(false);
+  const turnstileTokenRef = useRef<string | null>(null);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -71,6 +74,9 @@ export default function SummaryPage() {
 
       try {
         const history = buildSessionHistory(session);
+        const turnstileTokenOverride = turnstileTokenRef.current;
+        // Clear after one attempt; token is single-use.
+        turnstileTokenRef.current = null;
         const response = await fetch("/api/summary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,6 +84,7 @@ export default function SummaryPage() {
             sessionId: session.id,
             language: session.language,
             history,
+            turnstileToken: turnstileTokenOverride ?? undefined,
           }),
           signal: controller.signal,
         });
@@ -182,6 +189,12 @@ export default function SummaryPage() {
     setRetryKey((k) => k + 1);
   };
 
+  const handleVerified = async (token: string) => {
+    setShowVerificationModal(false);
+    turnstileTokenRef.current = token;
+    handleRetry();
+  };
+
   const errorMessage = generateError?.startsWith("errors.") ? t(generateError) : generateError;
   const isVerificationExpired = generateError === "errors.verification_expired";
   const title = generateError
@@ -238,12 +251,25 @@ export default function SummaryPage() {
             </button>
             {generateError ? (
               isVerificationExpired ? (
-                <button
-                  className="rounded-[var(--corner-radius-small)] bg-[var(--app-claude-orange)] px-3 py-1 text-xs font-semibold text-white"
-                  onClick={handleGoHome}
-                >
-                  {t("common.go_home")}
-                </button>
+                <>
+                  <button
+                    className="rounded-[var(--corner-radius-small)] bg-[var(--app-claude-orange)] px-3 py-1 text-xs font-semibold text-white"
+                    onClick={() => setShowVerificationModal(true)}
+                  >
+                    {t("errors.verify_again")}
+                  </button>
+                  <button
+                    className="rounded-[var(--corner-radius-small)] border border-[var(--app-border-color)] px-3 py-1 text-xs"
+                    onClick={handleGoHome}
+                  >
+                    {t("common.go_home")}
+                  </button>
+                  <VerificationModal
+                    isOpen={showVerificationModal}
+                    onClose={() => setShowVerificationModal(false)}
+                    onVerified={handleVerified}
+                  />
+                </>
               ) : (
                 <button
                   className="rounded-[var(--corner-radius-small)] bg-[var(--app-claude-orange)] px-3 py-1 text-xs font-semibold text-white"
@@ -319,4 +345,3 @@ export default function SummaryPage() {
     </main>
   );
 }
-

@@ -1,8 +1,11 @@
 import {
+  buildPassSetCookieHeader,
   getCookieFromHeader,
+  issueTurnstilePass,
   TURNSTILE_PASS_COOKIE_NAME,
   verifyTurnstilePass,
 } from "@/lib/turnstilePass";
+import { verifyTurnstileToken } from "@/lib/turnstileVerify";
 
 export type TurnstileEnforcementResult =
   | {
@@ -11,13 +14,14 @@ export type TurnstileEnforcementResult =
       shouldEnforceTurnstile: boolean;
       secretKey: string | null;
       isProd: boolean;
+      setPassCookieHeader: string | null;
     }
   | { ok: false; response: Response };
 
-export function enforceTurnstilePassCookie(
+export async function enforceTurnstilePassCookie(
   request: Request,
-  options: { logPrefix: string; skipPass?: boolean },
-): TurnstileEnforcementResult {
+  options: { logPrefix: string; skipPass?: boolean; turnstileToken?: string | null | undefined },
+): Promise<TurnstileEnforcementResult> {
   const isTurnstileExplicitlyDisabled =
     process.env.TURNSTILE_DISABLED === "1" ||
     process.env.TURNSTILE_DISABLED === "true" ||
@@ -50,8 +54,31 @@ export function enforceTurnstilePassCookie(
     const passValue = getCookieFromHeader(request.headers.get("cookie"), TURNSTILE_PASS_COOKIE_NAME);
     const passResult = verifyTurnstilePass(passValue, secretKey as string);
     if (!passResult.ok) {
+      const token = options.turnstileToken;
+      if (typeof token === "string" && token.trim().length > 0) {
+        const ok = await verifyTurnstileToken(token, secretKey as string, {
+          logPrefix: options.logPrefix,
+        });
+        if (ok) {
+          return {
+            ok: true,
+            isTurnstileEnabled,
+            shouldEnforceTurnstile,
+            secretKey,
+            isProd,
+            setPassCookieHeader: buildPassSetCookieHeader(
+              issueTurnstilePass(secretKey as string),
+              isProd,
+            ),
+          };
+        }
+      }
+
       if (process.env.NODE_ENV !== "test") {
-        console.warn(`[${options.logPrefix}] Turnstile pass cookie rejected`, { reason: passResult.reason });
+        console.warn(`[${options.logPrefix}] Turnstile pass cookie rejected`, {
+          reason: passResult.reason,
+          tokenProvided: typeof token === "string" && token.trim().length > 0,
+        });
       }
       return {
         ok: false,
@@ -69,5 +96,6 @@ export function enforceTurnstilePassCookie(
     shouldEnforceTurnstile,
     secretKey,
     isProd,
+    setPassCookieHeader: null,
   };
 }

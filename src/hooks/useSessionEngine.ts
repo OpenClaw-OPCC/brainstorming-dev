@@ -31,6 +31,8 @@ interface QuestionsPayload {
   questions: Question[];
 }
 
+type HistoryPayloadItem = { question: string; answer: string | string[] | number | boolean };
+
 export function useSessionEngine({ session, onSessionUpdate, enabled = true }: UseSessionEngineOptions) {
   const [guideText, setGuideText] = useState("");
   const guideTextRef = useRef("");
@@ -52,6 +54,11 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
+  const lastRequestRef = useRef<{
+    action: "start" | "answer" | "retry";
+    input?: string;
+    historyOverride?: HistoryPayloadItem[];
+  } | null>(null);
 
   const buildHistoryPayload = useCallback(
     (sessionLike: Session, answersOverride?: Answer[]) => {
@@ -173,7 +180,8 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
     async (
       action: "start" | "answer" | "retry",
       input?: string,
-      historyOverride?: Array<{ question: string; answer: string | string[] | number | boolean }>,
+      historyOverride?: HistoryPayloadItem[],
+      turnstileTokenOverride?: string,
     ) => {
       if (!enabled) return;
       if (inFlightRef.current) return;
@@ -181,6 +189,8 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
       setIsLoading(true);
       setError(null);
       setShowRetry(false);
+
+      lastRequestRef.current = { action, input, historyOverride };
 
       const shouldClearGuide = action !== "answer";
       if (shouldClearGuide) {
@@ -195,6 +205,8 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
       let shouldReplaceText = action === "answer";
 
       try {
+        const turnstileToken =
+          turnstileTokenOverride ?? (action === "start" ? session.turnstileToken : undefined);
         const response = await fetch("/api/brainstorm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -205,7 +217,7 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
             language: session.language,
             history: historyOverride ?? historyPayload,
             action,
-            turnstileToken: session.turnstileToken,
+            turnstileToken,
           }),
         });
 
@@ -412,6 +424,16 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
     runRequest("retry");
   }, [runRequest]);
 
+  const resumeAfterVerification = useCallback(
+    async (token: string) => {
+      const last = lastRequestRef.current;
+      if (!last) return false;
+      await runRequest(last.action, last.input, last.historyOverride, token);
+      return true;
+    },
+    [runRequest],
+  );
+
   return {
     guideText,
     currentGroup,
@@ -424,5 +446,6 @@ export function useSessionEngine({ session, onSessionUpdate, enabled = true }: U
     isComplete,
     showRetry,
     retry,
+    resumeAfterVerification,
   };
 }

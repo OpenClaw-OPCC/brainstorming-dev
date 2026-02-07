@@ -7,6 +7,7 @@ import {
   buildPassSetCookieHeader,
   issueTurnstilePass,
 } from "@/lib/turnstilePass";
+import { verifyTurnstileToken } from "@/lib/turnstileVerify";
 import { BrainstormRequestSchema } from "./schema";
 import type { BrainstormRequest } from "./schema";
 import type { ContentBlock, ToolUnion } from "@anthropic-ai/sdk/resources/messages";
@@ -63,33 +64,6 @@ function buildUserMessage(
   return `Continue the brainstorming.\n\nPrevious Q/A:\n${historyText || "(none)"}${progressHint}`;
 }
 
-async function verifyTurnstileToken(token: string, secretKey: string): Promise<boolean> {
-  try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        secret: secretKey,
-        response: token,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("[brainstorm] Turnstile verification HTTP error", { status: response.status });
-      return false;
-    }
-
-    const result = (await response.json()) as { success: boolean; "error-codes"?: string[] };
-    if (result.success !== true) {
-      console.warn("[brainstorm] Turnstile verification rejected", { errorCodes: result["error-codes"] });
-    }
-    return result.success === true;
-  } catch (error) {
-    console.error("[brainstorm] Turnstile verification failed", error);
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
   let rawBody: unknown;
   try {
@@ -115,9 +89,10 @@ export async function POST(request: Request) {
   const body = parsed.data;
 
   // Enforce a short-lived pass for any non-start LLM calls, so attackers can't bypass Turnstile by calling answer/retry.
-  const turnstile = enforceTurnstilePassCookie(request, {
+  const turnstile = await enforceTurnstilePassCookie(request, {
     logPrefix: "brainstorm",
     skipPass: body.action === "start",
+    turnstileToken: body.turnstileToken,
   });
   if (!turnstile.ok) return turnstile.response;
 
@@ -139,7 +114,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Turnstile verification required" }, { status: 403 });
     }
 
-    const isValid = await verifyTurnstileToken(body.turnstileToken, secretKey as string);
+    const isValid = await verifyTurnstileToken(body.turnstileToken, secretKey as string, {
+      logPrefix: "brainstorm",
+    });
     if (!isValid) {
       return Response.json({ error: "Turnstile verification failed" }, { status: 403 });
     }
@@ -164,6 +141,7 @@ export async function POST(request: Request) {
     shouldEnforceTurnstile && body.action === "start"
       ? buildPassSetCookieHeader(issueTurnstilePass(secretKey as string), isProd)
       : null;
+  const refreshedPassCookie = turnstile.setPassCookieHeader;
 
   if (process.env.MOCK_BRAINSTORM === "1") {
     const stream = createMockBrainstormStream({
@@ -177,6 +155,7 @@ export async function POST(request: Request) {
       Connection: "keep-alive",
     });
     if (setPassCookie) headers.append("Set-Cookie", setPassCookie);
+    if (refreshedPassCookie) headers.append("Set-Cookie", refreshedPassCookie);
     return new Response(stream, { headers });
   }
 
@@ -361,13 +340,17 @@ export async function POST(request: Request) {
       message,
     });
 
+    const headers = new Headers({ "Content-Type": "application/json" });
+    if (setPassCookie) headers.append("Set-Cookie", setPassCookie);
+    if (refreshedPassCookie) headers.append("Set-Cookie", refreshedPassCookie);
+
     return new Response(
       JSON.stringify({
         error: "Failed to fetch questions",
         upstreamStatus: status,
         message,
       }),
-      { status: 500 },
+      { status: 500, headers },
     );
   }
 
@@ -413,6 +396,7 @@ export async function POST(request: Request) {
     Connection: "keep-alive",
   });
   if (setPassCookie) headers.append("Set-Cookie", setPassCookie);
+  if (refreshedPassCookie) headers.append("Set-Cookie", refreshedPassCookie);
 
   return new Response(responseStream, { headers });
 }

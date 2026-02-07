@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { GuideText } from "@/components/guide/GuideText";
 import { QuestionCard } from "@/components/question/QuestionCard";
 import { ApiErrorModal } from "@/components/common/ApiErrorModal";
+import { VerificationModal } from "@/components/common/VerificationModal";
 import { useI18n } from "@/hooks/useI18n";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSessionEngine } from "@/hooks/useSessionEngine";
@@ -55,9 +56,11 @@ export default function SessionPage() {
     isComplete,
     showRetry,
     retry,
+    resumeAfterVerification,
   } = useSessionEngine({ session: effectiveSession, onSessionUpdate: handleSessionUpdate, enabled: Boolean(session) });
 
   const [showApiErrorModal, setShowApiErrorModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const combinedError = error;
 
@@ -107,6 +110,11 @@ export default function SessionPage() {
     router.push(withLang(`/summary/${session.id}`));
   };
 
+  const handleVerified = async (token: string) => {
+    setShowVerificationModal(false);
+    await resumeAfterVerification(token);
+  };
+
   const errorMessage = combinedError?.startsWith("errors.") ? t(combinedError) : combinedError;
 
   return (
@@ -119,12 +127,20 @@ export default function SessionPage() {
             <span>{errorMessage}</span>
             <div className="flex gap-2">
               {isVerificationExpired ? (
-                <button
-                  onClick={() => router.push(withLang("/"))}
-                  className="text-[var(--app-claude-orange)] hover:underline"
-                >
-                  {t("common.go_home")}
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowVerificationModal(true)}
+                    className="text-[var(--app-claude-orange)] hover:underline"
+                  >
+                    {t("errors.verify_again")}
+                  </button>
+                  <button
+                    onClick={() => router.push(withLang("/"))}
+                    className="text-[var(--app-claude-orange)] hover:underline"
+                  >
+                    {t("common.go_home")}
+                  </button>
+                </>
               ) : null}
               {isApiError ? (
                 <button
@@ -151,6 +167,11 @@ export default function SessionPage() {
         isOpen={showApiErrorModal}
         onClose={() => setShowApiErrorModal(false)}
         onRetry={showRetry ? retry : undefined}
+      />
+      <VerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        onVerified={handleVerified}
       />
 
       {currentGroup ? (
