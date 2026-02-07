@@ -17,6 +17,7 @@ interface QuestionCardProps {
   onSubmit: () => void;
   onBack: () => void;
   submitLabel: string;
+  nextLabel: string;
   backLabel: string;
   isLoading?: boolean;
 }
@@ -28,10 +29,12 @@ export function QuestionCard({
   onSubmit,
   onBack,
   submitLabel,
+  nextLabel,
   backLabel,
   isLoading = false,
 }: QuestionCardProps) {
   const [activeIndexByGroup, setActiveIndexByGroup] = useState<Record<string, number>>({});
+  const [tabAttentionByGroup, setTabAttentionByGroup] = useState<Record<string, { index: number; nonce: number }>>({});
   const activeIndex = activeIndexByGroup[group.id] ?? 0;
 
   const question = group.questions[activeIndex];
@@ -42,6 +45,20 @@ export function QuestionCard({
   );
 
   const validation = useMemo(() => validateGroup(group.questions, answers), [group.questions, answers]);
+
+  const firstMissingIndex = useMemo(() => {
+    if (validation.missing.length === 0) return -1;
+    const missingSet = new Set(validation.missing);
+    return group.questions.findIndex((q) => missingSet.has(q.id));
+  }, [group.questions, validation.missing]);
+
+  const tabAttention = tabAttentionByGroup[group.id];
+  const triggerTabAttention = (index: number) => {
+    setTabAttentionByGroup((prev) => ({
+      ...prev,
+      [group.id]: { index, nonce: Date.now() },
+    }));
+  };
 
   const optionIds = useMemo(() => {
     if (question.type === "yesno") {
@@ -56,6 +73,22 @@ export function QuestionCard({
     return ids;
   }, [question]);
 
+  const handleTabChange = (index: number) => {
+    setActiveIndexByGroup((prev) => ({ ...prev, [group.id]: index }));
+  };
+
+  const handlePrimaryAction = () => {
+    // If the group is incomplete, take the user to the first missing question instead of disabling the button.
+    if (!validation.valid) {
+      const targetIndex = firstMissingIndex >= 0 ? firstMissingIndex : activeIndex;
+      triggerTabAttention(targetIndex);
+      handleTabChange(targetIndex);
+      return;
+    }
+
+    onSubmit();
+  };
+
   useKeyboard({
     enabled: Boolean(group),
     optionIds,
@@ -63,13 +96,9 @@ export function QuestionCard({
       if (!optionId) return;
       onAnswerChange(applyOptionSelection(question, answer, optionId));
     },
-    onSubmit,
+    onSubmit: handlePrimaryAction,
     onBack,
   });
-
-  const handleTabChange = (index: number) => {
-    setActiveIndexByGroup((prev) => ({ ...prev, [group.id]: index }));
-  };
 
   return (
     <div className="relative flex w-full flex-col gap-4 rounded-[var(--corner-radius-large)] border border-[var(--app-border-color)] bg-[var(--app-secondary-background)]">
@@ -77,17 +106,21 @@ export function QuestionCard({
         questions={group.questions}
         activeIndex={activeIndex}
         onChange={handleTabChange}
+        missingQuestionIds={new Set(validation.missing)}
+        attention={tabAttention}
       />
-      <div className={`flex flex-col gap-4 px-4 pb-4 ${isLoading ? "opacity-0" : "opacity-100"}`}>
+      <div
+        key={question.id}
+        className={`oc-question-enter flex flex-col gap-4 px-4 pb-4 ${isLoading ? "opacity-0" : "opacity-100"}`}
+      >
         <div>
           <h2 className="text-sm font-semibold">{question.question}</h2>
         </div>
         <OptionList question={question} answer={answer} onChange={onAnswerChange} />
         <SubmitBar
-          onSubmit={onSubmit}
+          onSubmit={handlePrimaryAction}
           onBack={onBack}
-          canSubmit={validation.valid}
-          submitLabel={submitLabel}
+          submitLabel={validation.valid ? submitLabel : nextLabel}
           backLabel={backLabel}
           isLoading={isLoading}
         />

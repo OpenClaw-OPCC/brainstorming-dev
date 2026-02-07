@@ -208,6 +208,7 @@ export default function SessionPage() {
           onSubmit={submitCurrent}
           onBack={goBack}
           submitLabel={t("session.submit")}
+          nextLabel={t("session.next")}
           backLabel={t("session.back")}
           isLoading={isLoading}
         />
